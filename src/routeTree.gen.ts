@@ -9,38 +9,287 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as VisitorRouteImport } from './routes/visitor'
+import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as RegisterRouteImport } from './routes/register'
+import { Route as QrVerifyRouteImport } from './routes/qr-verify'
+import { Route as PricingRouteImport } from './routes/pricing'
+import { Route as OrganizerRouteImport } from './routes/organizer'
+import { Route as NotificationsRouteImport } from './routes/notifications'
+import { Route as HotelTravelRouteImport } from './routes/hotel-travel'
+import { Route as ExhibitorRouteImport } from './routes/exhibitor'
+import { Route as EventsRouteImport } from './routes/events'
+import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as EventsEventIdRouteImport } from './routes/events.$eventId'
+import { Route as BookEventIdRouteImport } from './routes/book.$eventId'
 
+const VisitorRoute = VisitorRouteImport.update({
+  id: '/visitor',
+  path: '/visitor',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RegisterRoute = RegisterRouteImport.update({
+  id: '/register',
+  path: '/register',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const QrVerifyRoute = QrVerifyRouteImport.update({
+  id: '/qr-verify',
+  path: '/qr-verify',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PricingRoute = PricingRouteImport.update({
+  id: '/pricing',
+  path: '/pricing',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OrganizerRoute = OrganizerRouteImport.update({
+  id: '/organizer',
+  path: '/organizer',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NotificationsRoute = NotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HotelTravelRoute = HotelTravelRouteImport.update({
+  id: '/hotel-travel',
+  path: '/hotel-travel',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ExhibitorRoute = ExhibitorRouteImport.update({
+  id: '/exhibitor',
+  path: '/exhibitor',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EventsRoute = EventsRouteImport.update({
+  id: '/events',
+  path: '/events',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AnalyticsRoute = AnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EventsEventIdRoute = EventsEventIdRouteImport.update({
+  id: '/$eventId',
+  path: '/$eventId',
+  getParentRoute: () => EventsRoute,
+} as any)
+const BookEventIdRoute = BookEventIdRouteImport.update({
+  id: '/book/$eventId',
+  path: '/book/$eventId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/analytics': typeof AnalyticsRoute
+  '/events': typeof EventsRouteWithChildren
+  '/exhibitor': typeof ExhibitorRoute
+  '/hotel-travel': typeof HotelTravelRoute
+  '/notifications': typeof NotificationsRoute
+  '/organizer': typeof OrganizerRoute
+  '/pricing': typeof PricingRoute
+  '/qr-verify': typeof QrVerifyRoute
+  '/register': typeof RegisterRoute
+  '/settings': typeof SettingsRoute
+  '/visitor': typeof VisitorRoute
+  '/book/$eventId': typeof BookEventIdRoute
+  '/events/$eventId': typeof EventsEventIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/analytics': typeof AnalyticsRoute
+  '/events': typeof EventsRouteWithChildren
+  '/exhibitor': typeof ExhibitorRoute
+  '/hotel-travel': typeof HotelTravelRoute
+  '/notifications': typeof NotificationsRoute
+  '/organizer': typeof OrganizerRoute
+  '/pricing': typeof PricingRoute
+  '/qr-verify': typeof QrVerifyRoute
+  '/register': typeof RegisterRoute
+  '/settings': typeof SettingsRoute
+  '/visitor': typeof VisitorRoute
+  '/book/$eventId': typeof BookEventIdRoute
+  '/events/$eventId': typeof EventsEventIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/analytics': typeof AnalyticsRoute
+  '/events': typeof EventsRouteWithChildren
+  '/exhibitor': typeof ExhibitorRoute
+  '/hotel-travel': typeof HotelTravelRoute
+  '/notifications': typeof NotificationsRoute
+  '/organizer': typeof OrganizerRoute
+  '/pricing': typeof PricingRoute
+  '/qr-verify': typeof QrVerifyRoute
+  '/register': typeof RegisterRoute
+  '/settings': typeof SettingsRoute
+  '/visitor': typeof VisitorRoute
+  '/book/$eventId': typeof BookEventIdRoute
+  '/events/$eventId': typeof EventsEventIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/analytics'
+    | '/events'
+    | '/exhibitor'
+    | '/hotel-travel'
+    | '/notifications'
+    | '/organizer'
+    | '/pricing'
+    | '/qr-verify'
+    | '/register'
+    | '/settings'
+    | '/visitor'
+    | '/book/$eventId'
+    | '/events/$eventId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/analytics'
+    | '/events'
+    | '/exhibitor'
+    | '/hotel-travel'
+    | '/notifications'
+    | '/organizer'
+    | '/pricing'
+    | '/qr-verify'
+    | '/register'
+    | '/settings'
+    | '/visitor'
+    | '/book/$eventId'
+    | '/events/$eventId'
+  id:
+    | '__root__'
+    | '/'
+    | '/analytics'
+    | '/events'
+    | '/exhibitor'
+    | '/hotel-travel'
+    | '/notifications'
+    | '/organizer'
+    | '/pricing'
+    | '/qr-verify'
+    | '/register'
+    | '/settings'
+    | '/visitor'
+    | '/book/$eventId'
+    | '/events/$eventId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AnalyticsRoute: typeof AnalyticsRoute
+  EventsRoute: typeof EventsRouteWithChildren
+  ExhibitorRoute: typeof ExhibitorRoute
+  HotelTravelRoute: typeof HotelTravelRoute
+  NotificationsRoute: typeof NotificationsRoute
+  OrganizerRoute: typeof OrganizerRoute
+  PricingRoute: typeof PricingRoute
+  QrVerifyRoute: typeof QrVerifyRoute
+  RegisterRoute: typeof RegisterRoute
+  SettingsRoute: typeof SettingsRoute
+  VisitorRoute: typeof VisitorRoute
+  BookEventIdRoute: typeof BookEventIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/visitor': {
+      id: '/visitor'
+      path: '/visitor'
+      fullPath: '/visitor'
+      preLoaderRoute: typeof VisitorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/register': {
+      id: '/register'
+      path: '/register'
+      fullPath: '/register'
+      preLoaderRoute: typeof RegisterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/qr-verify': {
+      id: '/qr-verify'
+      path: '/qr-verify'
+      fullPath: '/qr-verify'
+      preLoaderRoute: typeof QrVerifyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pricing': {
+      id: '/pricing'
+      path: '/pricing'
+      fullPath: '/pricing'
+      preLoaderRoute: typeof PricingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/organizer': {
+      id: '/organizer'
+      path: '/organizer'
+      fullPath: '/organizer'
+      preLoaderRoute: typeof OrganizerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/notifications': {
+      id: '/notifications'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof NotificationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/hotel-travel': {
+      id: '/hotel-travel'
+      path: '/hotel-travel'
+      fullPath: '/hotel-travel'
+      preLoaderRoute: typeof HotelTravelRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/exhibitor': {
+      id: '/exhibitor'
+      path: '/exhibitor'
+      fullPath: '/exhibitor'
+      preLoaderRoute: typeof ExhibitorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/events': {
+      id: '/events'
+      path: '/events'
+      fullPath: '/events'
+      preLoaderRoute: typeof EventsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/analytics': {
+      id: '/analytics'
+      path: '/analytics'
+      fullPath: '/analytics'
+      preLoaderRoute: typeof AnalyticsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,11 +297,48 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/events/$eventId': {
+      id: '/events/$eventId'
+      path: '/$eventId'
+      fullPath: '/events/$eventId'
+      preLoaderRoute: typeof EventsEventIdRouteImport
+      parentRoute: typeof EventsRoute
+    }
+    '/book/$eventId': {
+      id: '/book/$eventId'
+      path: '/book/$eventId'
+      fullPath: '/book/$eventId'
+      preLoaderRoute: typeof BookEventIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
+interface EventsRouteChildren {
+  EventsEventIdRoute: typeof EventsEventIdRoute
+}
+
+const EventsRouteChildren: EventsRouteChildren = {
+  EventsEventIdRoute: EventsEventIdRoute,
+}
+
+const EventsRouteWithChildren =
+  EventsRoute._addFileChildren(EventsRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AnalyticsRoute: AnalyticsRoute,
+  EventsRoute: EventsRouteWithChildren,
+  ExhibitorRoute: ExhibitorRoute,
+  HotelTravelRoute: HotelTravelRoute,
+  NotificationsRoute: NotificationsRoute,
+  OrganizerRoute: OrganizerRoute,
+  PricingRoute: PricingRoute,
+  QrVerifyRoute: QrVerifyRoute,
+  RegisterRoute: RegisterRoute,
+  SettingsRoute: SettingsRoute,
+  VisitorRoute: VisitorRoute,
+  BookEventIdRoute: BookEventIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
