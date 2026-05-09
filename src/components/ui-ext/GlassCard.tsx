@@ -8,10 +8,13 @@ export function GlassCard({ className, children, hover = true, ...props }: HTMLM
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-50px" }}
       transition={{ duration: 0.5, ease: [0.2, 0.8, 0.2, 1] }}
-      className={cn("glass rounded-2xl shadow-elegant", hover && "hover-lift", className)}
+      className={cn("glass rounded-2xl shadow-elegant relative overflow-hidden", hover && "hover-lift", className)}
       {...props}
     >
-      {children}
+      <div className="absolute inset-0 bg-gradient-to-br from-white/[0.05] to-transparent pointer-events-none" />
+      <div className="relative z-10">
+        {children}
+      </div>
     </motion.div>
   );
 }

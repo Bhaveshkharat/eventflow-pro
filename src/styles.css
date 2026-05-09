@@ -142,24 +142,29 @@
   html { scroll-behavior: smooth; }
   body {
     background-color: var(--color-background);
+    background-image: var(--gradient-mesh);
+    background-attachment: fixed;
     color: var(--color-foreground);
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
     -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
   }
 }
 
 @layer utilities {
   .glass {
     background: var(--glass-bg);
-    backdrop-filter: blur(20px) saturate(140%);
-    -webkit-backdrop-filter: blur(20px) saturate(140%);
-    border: 1px solid var(--glass-border);
-  }
-  .glass-strong {
-    background: color-mix(in oklab, var(--card) 85%, transparent);
     backdrop-filter: blur(24px) saturate(160%);
     -webkit-backdrop-filter: blur(24px) saturate(160%);
     border: 1px solid var(--glass-border);
+    background-image: linear-gradient(135deg, rgba(255,255,255,0.05), transparent);
+  }
+  .glass-strong {
+    background: color-mix(in oklab, var(--card) 85%, transparent);
+    backdrop-filter: blur(32px) saturate(180%);
+    -webkit-backdrop-filter: blur(32px) saturate(180%);
+    border: 1px solid var(--glass-border);
+    background-image: linear-gradient(135deg, rgba(255,255,255,0.1), transparent);
   }
   .gradient-text {
     background: var(--gradient-primary);
@@ -171,8 +176,11 @@
   .mesh-bg { background: var(--gradient-mesh); }
   .shadow-elegant { box-shadow: var(--shadow-elegant); }
   .shadow-glow { box-shadow: var(--shadow-glow); }
+  .shadow-glow-sm { box-shadow: 0 4px 12px -2px color-mix(in oklab, var(--brand) 40%, transparent); }
   .hover-lift { transition: transform .3s cubic-bezier(.2,.8,.2,1), box-shadow .3s; }
   .hover-lift:hover { transform: translateY(-3px); box-shadow: var(--shadow-glow); }
+  .hover-scale { transition: transform .2s cubic-bezier(.2,.8,.2,1); }
+  .hover-scale:hover { transform: scale(1.02); }
   .shimmer {
     position: relative;
     overflow: hidden;

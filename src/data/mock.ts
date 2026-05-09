@@ -112,4 +112,35 @@ export const stats = [
   { label: "Cities", value: "94" },
 ];
 
-export type Role = "visitor" | "exhibitor" | "organizer" | "hotel";
+export type Role = "visitor" | "exhibitor" | "delegate" | "speaker" | "organizer" | "hotel-agent" | "travel-agent" | "vendor" | "volunteer" | "superadmin";
+
+export type Booth = { id: string; eventId: string; exhibitorId: string; number: string; size: string; status: "Confirmed" | "Pending" | "Allocated" };
+export const booths: Booth[] = [
+  { id: "b1", eventId: "techsummit-26", exhibitorId: "ex1", number: "A-101", size: "3x3m", status: "Allocated" },
+  { id: "b2", eventId: "techsummit-26", exhibitorId: "ex2", number: "B-205", size: "6x3m", status: "Confirmed" },
+];
+
+export type Session = { id: string; eventId: string; title: string; time: string; speaker: string; status: "Upcoming" | "Live" | "Completed" };
+export const sessions: Session[] = [
+  { id: "s1", eventId: "techsummit-26", title: "Future of AI", time: "10:00 AM", speaker: "Ada Lovelace", status: "Upcoming" },
+  { id: "s2", eventId: "techsummit-26", title: "Cloud Scale", time: "11:30 AM", speaker: "Maria Garcia", status: "Live" },
+];
+
+export type Inquiry = { id: string; user: string; type: "Hotel" | "Travel"; item: string; date: string; status: "Pending" | "Confirmed" | "Rejected" };
+export const inquiries: Inquiry[] = [
+  { id: "i1", user: "Olivia Bennett", type: "Hotel", item: "The Grand Marquise (2 nights)", date: "2026-06-12", status: "Confirmed" },
+  { id: "i2", user: "Marcus Chen", type: "Travel", item: "SFO Flight Package", date: "2026-06-11", status: "Pending" },
+];
+
+export type Task = { id: string; event: string; title: string; deadline: string; status: "To Do" | "In Progress" | "Completed" };
+export const vendorTasks: Task[] = [
+  { id: "t1", event: "TechSummit 2026", title: "Sound System Setup - Hall A", deadline: "2026-06-11", status: "In Progress" },
+  { id: "t2", event: "TechSummit 2026", title: "Exhibitor Banner Printing", deadline: "2026-06-10", status: "Completed" },
+];
+
+export type Settlement = { id: string; recipient: string; role: string; amount: number; date: string; status: "Pending" | "Paid" };
+export const settlements: Settlement[] = [
+  { id: "set1", recipient: "Lumen Tech", role: "Exhibitor", amount: 4500, date: "2026-07-01", status: "Paid" },
+  { id: "set2", recipient: "Grand Marquise", role: "Hotel Agent", amount: 12400, date: "2026-07-15", status: "Pending" },
+  { id: "set3", recipient: "SkyTravel", role: "Travel Agent", amount: 8200, date: "2026-07-15", status: "Pending" },
+];
