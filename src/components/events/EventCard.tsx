@@ -1,4 +1,5 @@
-import { Link } from "@tanstack/react-router";
+"use client";
+import Link from "next/link";
 import { Calendar, MapPin, Users } from "lucide-react";
 import { motion } from "framer-motion";
 import type { Event } from "@/data/mock";
@@ -8,7 +9,7 @@ export function EventCard({ event, index = 0 }: { event: Event; index?: number }
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-50px" }}
       transition={{ duration: 0.5, delay: index * 0.05, ease: [0.2, 0.8, 0.2, 1] }}>
-      <Link to="/events/$eventId" params={{ eventId: event.id }} className="group block">
+      <Link href={`/events/${event.id}`} className="group block">
         <div className="overflow-hidden rounded-2xl glass shadow-elegant hover-lift">
           <div className="relative aspect-[16/10] overflow-hidden">
             <img src={event.image} alt={event.title} loading="lazy"

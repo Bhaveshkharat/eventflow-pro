@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import Link from "next/link";
 import { Sparkles, Twitter, Github, Linkedin } from "lucide-react";
 
 export function Footer() {
@@ -26,7 +26,7 @@ export function Footer() {
             <p className="font-semibold text-sm mb-4">{col.title}</p>
             <ul className="space-y-2">
               {col.links.map(([l, h]) => (
-                <li key={l}><Link to={h} className="text-sm text-muted-foreground hover:text-foreground transition-colors">{l}</Link></li>
+                <li key={l}><Link href={h} className="text-sm text-muted-foreground hover:text-foreground transition-colors">{l}</Link></li>
               ))}
             </ul>
           </div>

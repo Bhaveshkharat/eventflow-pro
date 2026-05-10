@@ -1,4 +1,5 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { 
   LayoutDashboard, Ticket, Users, Building2, Hotel, BarChart3, 
   ScanLine, Bell, Settings, Sparkles, Menu, X, Search, 
@@ -70,7 +71,7 @@ const roleNavGroups: Record<Role, NavGroup[]> = {
 };
 
 export function DashboardShell({ children, title, subtitle, backLink }: { children: React.ReactNode; title: string; subtitle?: string; backLink?: string }) {
-  const path = useRouterState({ select: s => s.location.pathname });
+  const path = usePathname();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const { role, setRole } = useRole();
@@ -148,7 +149,7 @@ export function DashboardShell({ children, title, subtitle, backLink }: { childr
                 {group.items.map(item => {
                   const active = path === item.to;
                   return (
-                    <Link key={item.to} to={item.to} className={cn(
+                    <Link key={item.to} href={item.to} className={cn(
                       "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all relative",
                       active ? "text-foreground bg-white/5 shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-white/5"
                     )}>
@@ -240,7 +241,7 @@ export function DashboardShell({ children, title, subtitle, backLink }: { childr
             )}
             <div>
               {backLink && (
-                <Link to={backLink} className="text-[10px] font-bold text-primary flex items-center gap-1 mb-0.5 hover:underline uppercase tracking-wider">
+                <Link href={backLink} className="text-[10px] font-bold text-primary flex items-center gap-1 mb-0.5 hover:underline uppercase tracking-wider">
                   <ChevronLeft className="h-3 w-3" /> Back
                 </Link>
               )}
@@ -280,7 +281,7 @@ export function DashboardShell({ children, title, subtitle, backLink }: { childr
                {currentGroups[0].items.slice(0, 4).map(item => {
                  const active = path === item.to;
                  return (
-                   <Link key={item.to} to={item.to} className={cn(
+                   <Link key={item.to} href={item.to} className={cn(
                      "flex-1 flex flex-col items-center justify-center py-2 rounded-[1.8rem] transition-all relative overflow-hidden",
                      active ? "text-primary shadow-inner" : "text-muted-foreground hover:text-foreground"
                    )}>
