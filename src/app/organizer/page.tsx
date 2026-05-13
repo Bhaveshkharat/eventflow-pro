@@ -1,5 +1,6 @@
 "use client";
 import React from "react";
+import Link from "next/link";
 import { 
   LayoutDashboard, Plus, Users, DollarSign, Calendar, 
   ChevronRight, ArrowUpRight, TrendingUp, Filter, 
@@ -61,8 +62,10 @@ export default function OrganizerDashboard() {
            {/* Settlement Tracking */}
            <div className="pt-8 space-y-6">
               <div className="flex items-center justify-between px-1">
-                 <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Pending Settlements</h2>
-                 <button className="text-[10px] font-bold text-primary flex items-center gap-1">View Payout History <ArrowUpRight className="h-3 w-3" /></button>
+                 <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Pending Settlements & Liabilities</h2>
+                 <Link href="/organizer/settlements" className="text-[10px] font-bold text-primary flex items-center gap-1 hover:underline">
+                    Open Finance Payout Hub <ArrowUpRight className="h-3 w-3" />
+                 </Link>
               </div>
               <GlassCard className="p-0 overflow-hidden" hover={false}>
                  <div className="overflow-x-auto">
@@ -77,6 +80,28 @@ export default function OrganizerDashboard() {
                           </tr>
                        </thead>
                        <tbody className="divide-y divide-border">
+                          {/* Prepend an immediate outstanding Vendor Payout entry */}
+                          <tr className="hover:bg-accent/30 transition-colors bg-purple-500/[0.02]">
+                             <td className="px-6 py-4">
+                                <p className="text-xs font-bold text-foreground">Lumen Horizon Operations</p>
+                                <p className="text-[10px] text-purple-500 font-mono mt-0.5">INV-2026-901 · Hardware Drop</p>
+                             </td>
+                             <td className="px-6 py-4"><span className="text-[9px] font-bold bg-purple-500/10 text-purple-500 border border-purple-500/20 px-2 py-0.5 rounded uppercase font-mono">Vendor Payout</span></td>
+                             <td className="px-6 py-4 text-xs font-black font-mono">$1,350</td>
+                             <td className="px-6 py-4">
+                                <div className="flex items-center gap-1.5 text-[10px] font-bold text-amber-500 font-mono">
+                                   <Clock className="h-3 w-3 animate-spin" /> Pending Wire
+                                </div>
+                             </td>
+                             <td className="px-6 py-4 text-right">
+                                <Link href="/organizer/settlements">
+                                   <button className="h-7 px-3 rounded-lg bg-primary text-white text-[9px] font-bold uppercase tracking-wider hover:bg-primary/90 transition-all shadow-sm">
+                                      Authorize
+                                   </button>
+                                </Link>
+                             </td>
+                          </tr>
+
                           {settlements.map(s => (
                             <tr key={s.id} className="hover:bg-accent/30 transition-colors">
                                <td className="px-6 py-4">
@@ -92,9 +117,11 @@ export default function OrganizerDashboard() {
                                   </div>
                                </td>
                                <td className="px-6 py-4 text-right">
-                                  <button className="h-8 w-8 rounded-lg glass grid place-items-center text-muted-foreground hover:text-foreground">
-                                     <MoreHorizontal className="h-4 w-4" />
-                                  </button>
+                                  <Link href="/organizer/settlements">
+                                     <button className="h-7 px-2.5 rounded-lg glass text-muted-foreground hover:text-foreground text-[10px] font-bold">
+                                        Audit Payout
+                                     </button>
+                                  </Link>
                                </td>
                             </tr>
                           ))}
@@ -128,7 +155,7 @@ export default function OrganizerDashboard() {
               <div className="mt-4 h-2 w-full bg-emerald-500/10 rounded-full overflow-hidden">
                  <div className="h-full bg-emerald-500 w-[84%]" />
               </div>
-              <GradientButton className="w-full mt-6 h-10" variant="glow">View Check-in Dashboard</GradientButton>
+              <GradientButton className="w-full mt-6 h-10">View Check-in Dashboard</GradientButton>
            </GlassCard>
 
            <div className="p-6 glass rounded-3xl border border-white/5 space-y-4">

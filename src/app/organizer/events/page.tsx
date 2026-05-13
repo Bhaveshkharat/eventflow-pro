@@ -74,7 +74,7 @@ export default function OrganizerEvents() {
                           </button>
                        </div>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-4 leading-relaxed line-clamp-2 max-w-2xl">{e.description}</p>
+                    <p className="text-xs text-muted-foreground mt-4 leading-relaxed line-clamp-2 max-w-2xl">{e.tagline}</p>
                  </div>
 
                  {/* Stats Bar */}

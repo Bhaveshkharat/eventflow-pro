@@ -3,7 +3,7 @@ import { usePathname } from "next/navigation";
 import { 
   LayoutDashboard, Ticket, Users, Building2, Hotel, BarChart3, 
   ScanLine, Bell, Settings, Sparkles, Menu, X, Search, 
-  Mic2, Briefcase, ShieldCheck, Truck, Plane, Calendar, DollarSign,
+  Mic2, Briefcase, ShieldCheck, Truck, Plane, Calendar, DollarSign, FileText,
   ChevronLeft, ChevronRight, LogOut, HelpCircle, User
 } from "lucide-react";
 import { useState, useEffect } from "react";
@@ -35,9 +35,16 @@ const roleNavGroups: Record<Role, NavGroup[]> = {
       ]
     },
     {
+      group: "Master",
+      items: [
+        { to: "/organizer/roles-users", label: "Roles & Partners", icon: User, badge: "New" },
+      ]
+    },
+    {
       group: "Management",
       items: [
         { to: "/organizer/events", label: "Events Portfolio", icon: Calendar },
+        { to: "/organizer/participants", label: "Event Participants", icon: Users },
         { to: "/organizer/operations", label: "Partner Hub", icon: Briefcase },
         { to: "/qr-verify", label: "Check-in Suite", icon: ScanLine },
       ]
@@ -51,9 +58,15 @@ const roleNavGroups: Record<Role, NavGroup[]> = {
   ],
   visitor: [
     {
+      group: "Discovery",
+      items: [
+        { to: "/events", label: "Upcoming Events", icon: Calendar, badge: "New" },
+      ]
+    },
+    {
       group: "My Account",
       items: [
-        { to: "/visitor", label: "My Events", icon: Ticket },
+        { to: "/visitor", label: "My Bookings", icon: Ticket },
         { to: "/notifications", label: "Updates", icon: Bell, badge: "3" },
         { to: "/settings", label: "Profile Settings", icon: Settings },
       ]
@@ -62,10 +75,27 @@ const roleNavGroups: Record<Role, NavGroup[]> = {
   // Fallbacks for other roles (simplified for now)
   exhibitor: [{ group: "Main", items: [{ to: "/exhibitor", label: "Booth Mgmt", icon: Building2 }, { to: "/analytics", label: "Leads", icon: BarChart3 }] }],
   delegate: [{ group: "Main", items: [{ to: "/delegate", label: "Passes", icon: ShieldCheck }] }],
-  speaker: [{ group: "Main", items: [{ to: "/speaker", label: "Hub", icon: Mic2 }] }],
+  speaker: [
+    { 
+      group: "Operations", 
+      items: [
+        { to: "/speaker", label: "Speaker Hub", icon: Mic2 },
+        { to: "/speaker/sessions", label: "My Sessions", icon: Calendar, badge: "Full Details" }
+      ] 
+    }
+  ],
   "hotel-agent": [{ group: "Main", items: [{ to: "/hotel-agent", label: "Hotels", icon: Hotel }] }],
   "travel-agent": [{ group: "Main", items: [{ to: "/travel-agent", label: "Travel", icon: Plane }] }],
-  vendor: [{ group: "Main", items: [{ to: "/vendor", label: "Service", icon: Truck }] }],
+  vendor: [
+    { 
+      group: "Execution", 
+      items: [
+        { to: "/vendor", label: "Service Execution", icon: Truck },
+        { to: "/vendor/billing", label: "Billing & Settlement", icon: DollarSign, badge: "Invoices" },
+        { to: "/vendor/history", label: "Fulfillment History", icon: FileText }
+      ] 
+    }
+  ],
   volunteer: [{ group: "Main", items: [{ to: "/volunteer", label: "Tasks", icon: Users }] }],
   superadmin: [{ group: "Admin", items: [{ to: "/super-admin", label: "Platform", icon: ShieldCheck }] }]
 };
@@ -96,7 +126,7 @@ export function DashboardShell({ children, title, subtitle, backLink }: { childr
         <motion.aside 
           initial={false}
           animate={{ width: isCollapsed ? 88 : 280 }}
-          className="relative flex flex-col border-r border-white/5 bg-sidebar/40 backdrop-blur-3xl z-40"
+          className="sticky top-0 h-screen shrink-0 flex flex-col border-r border-white/5 bg-sidebar/40 backdrop-blur-3xl z-40 overflow-hidden"
           transition={{ duration: 0.5, ease: [0.2, 0.8, 0.2, 1] }}
         >
           {/* Sidebar Header */}

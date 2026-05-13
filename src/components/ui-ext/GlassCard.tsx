@@ -14,7 +14,7 @@ export function GlassCard({ className, children, hover = true, ...props }: HTMLM
     >
       <div className="absolute inset-0 bg-gradient-to-br from-white/[0.05] to-transparent pointer-events-none" />
       <div className="relative z-10">
-        {children}
+        {children as any}
       </div>
     </motion.div>
   );

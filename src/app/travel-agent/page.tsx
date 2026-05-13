@@ -99,7 +99,7 @@ export default function TravelAgentDashboard() {
                     <span className="text-xs font-bold">$12,450</span>
                  </div>
               </div>
-              <GradientButton className="w-full mt-8 h-10" variant="glow">Manage Bank Details</GradientButton>
+              <GradientButton className="w-full mt-8 h-10">Manage Bank Details</GradientButton>
            </GlassCard>
 
            <div className="p-6 glass rounded-3xl border border-white/5">

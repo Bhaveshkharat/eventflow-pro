@@ -1,4 +1,4 @@
-// File: C:\development\mern\eventflow-pro\src\app\events\[eventId]\page.tsx
+// File: C:\EventFlow\eventflow-pro\src\app\events\[eventId]\page.tsx
 import * as entry from '../../../../../src/app/events/[eventId]/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

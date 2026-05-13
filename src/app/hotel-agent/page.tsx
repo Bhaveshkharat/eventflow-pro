@@ -101,7 +101,7 @@ export default function HotelAgentDashboard() {
               <p className="text-xs text-muted-foreground leading-relaxed">
                  TechSummit 2026 is seeing a surge in bookings. We recommend adjusting your inventory for June 12-14.
               </p>
-              <GradientButton className="w-full mt-6 h-10 text-[10px] font-bold uppercase tracking-wider" variant="glow">Manage Inventory</GradientButton>
+              <GradientButton className="w-full mt-6 h-10 text-[10px] font-bold uppercase tracking-wider">Manage Inventory</GradientButton>
            </GlassCard>
 
            <div className="p-6 glass rounded-3xl border border-white/5">

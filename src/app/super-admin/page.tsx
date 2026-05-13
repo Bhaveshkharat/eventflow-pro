@@ -85,7 +85,7 @@ export default function SuperAdminDashboard() {
                  <SettingToggle label="Exhibitor Module" checked />
                  <SettingToggle label="Beta Features" />
               </div>
-              <GradientButton className="w-full h-10" variant="outline">Global System Config <Settings className="ml-2 h-3.5 w-3.5" /></GradientButton>
+              <GradientButton className="w-full h-10">Global System Config <Settings className="ml-2 h-3.5 w-3.5" /></GradientButton>
            </div>
 
            <GlassCard className="p-6 bg-primary/5 border-primary/20" hover={false}>
