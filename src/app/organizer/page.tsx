@@ -62,9 +62,9 @@ export default function OrganizerDashboard() {
            {/* Settlement Tracking */}
            <div className="pt-8 space-y-6">
               <div className="flex items-center justify-between px-1">
-                 <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Pending Settlements & Liabilities</h2>
+                 <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Pending Payouts</h2>
                  <Link href="/organizer/settlements" className="text-[10px] font-bold text-primary flex items-center gap-1 hover:underline">
-                    Open Finance Payout Hub <ArrowUpRight className="h-3 w-3" />
+                    Open Payouts Dashboard <ArrowUpRight className="h-3 w-3" />
                  </Link>
               </div>
               <GlassCard className="p-0 overflow-hidden" hover={false}>
@@ -119,7 +119,7 @@ export default function OrganizerDashboard() {
                                <td className="px-6 py-4 text-right">
                                   <Link href="/organizer/settlements">
                                      <button className="h-7 px-2.5 rounded-lg glass text-muted-foreground hover:text-foreground text-[10px] font-bold">
-                                        Audit Payout
+                                        Review Payout
                                      </button>
                                   </Link>
                                </td>

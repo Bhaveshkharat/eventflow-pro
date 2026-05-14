@@ -1,8 +1,10 @@
 {
   "include": [
+    ".next/types/**/*.ts",
+    "out/build/types/**/*.ts",
     "src/**/*.ts",
     "src/**/*.tsx",
-    ".next/types/**/*.ts"
+    "out/types/**/*.ts"
   ],
   "compilerOptions": {
     "target": "ES2022",

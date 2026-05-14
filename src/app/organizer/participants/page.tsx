@@ -94,7 +94,7 @@ export default function ParticipantsManagement() {
     } else if (category === "Speakers") {
       setSpeakersList(prev => prev.filter(p => p.id !== id));
     }
-    toast.success(`Participant profile successfully unassigned from current roster.`);
+    toast.success(`Participant successfully removed from the list.`);
   };
 
   const getEventTitle = (id: string) => {
@@ -126,7 +126,7 @@ export default function ParticipantsManagement() {
       setSelectedParticipant((prev: any) => ({ ...prev, meta: constructedMeta, status: "Confirmed" }));
     }
 
-    toast.success(`Booth footprint allocated successfully for ${targetExhibitorForBooth.name}! Parameters synced downstream to client UI.`);
+    toast.success(`Assigned booth successfully for ${targetExhibitorForBooth.name}!`);
     setTargetExhibitorForBooth(null);
   };
 
@@ -146,7 +146,7 @@ export default function ParticipantsManagement() {
   const handleExecuteManualOnboard = (e: React.FormEvent) => {
     e.preventDefault();
     if (!onboardForm.name || !onboardForm.email) {
-      toast.error("Please supply valid entity name and electronic contact strings.");
+      toast.error("Please supply a valid name and email address.");
       return;
     }
 
@@ -179,7 +179,7 @@ export default function ParticipantsManagement() {
       setActiveTab("Speakers");
     }
 
-    toast.success(`Successfully provisioned ${onboardForm.role} profile "${onboardForm.name}" into target convention scope!`);
+    toast.success(`Successfully added ${onboardForm.role} "${onboardForm.name}"!`);
     setShowOnboardModal(false);
     setOnboardForm({
       name: "",
@@ -195,15 +195,15 @@ export default function ParticipantsManagement() {
 
   return (
     <DashboardShell 
-      title="Event Participants & Exhibitor Scoping" 
-      subtitle="Central Organizer administrative engine to review attendee rosters and allocate spatial booth metrics directly to approved brand applicants."
+      title="Event Participants" 
+      subtitle="Manage registered attendees, view professional profiles, and allocate exhibition booths."
     >
       {/* ── CENTRAL WORKFLOW NOTICE ── */}
       <div className="p-4 rounded-xl glass border border-border/40 bg-primary/5 mb-8 flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <Building2 className="h-5 w-5 text-primary shrink-0" />
           <p className="text-xs text-foreground font-medium">
-            <span className="font-bold text-primary">Organizer Scoping Active</span>: Select any <span className="font-bold text-primary">Exhibitor</span> below to instantly allocate their specific hall boundary string (e.g. <code className="text-primary font-bold">Booth #A-101</code>).
+            <span className="font-bold text-primary">Booth Allocation</span>: Click <span className="font-bold text-primary">'Assign Booth'</span> on any Exhibitor below to configure their booth number and size.
           </p>
         </div>
         <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-background border border-border font-bold text-muted-foreground shrink-0 hidden sm:block">
@@ -275,7 +275,7 @@ export default function ParticipantsManagement() {
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Filter records by name, brand string, telemetry..."
+                    placeholder="Search by name, company, or pass details..."
                     className="w-full pl-10 pr-4 py-2.5 text-xs bg-background border border-border rounded-xl text-foreground placeholder:text-muted-foreground outline-none focus:border-primary transition-all font-medium"
                   />
                   {searchQuery && (
@@ -292,7 +292,7 @@ export default function ParticipantsManagement() {
                     onChange={(e) => setSelectedEventId(e.target.value)}
                     className="w-full sm:w-auto pl-3.5 pr-8 py-2.5 text-xs bg-background border border-border rounded-xl text-foreground font-medium outline-none focus:border-primary transition-all appearance-none cursor-pointer"
                   >
-                     <option value="all" className="bg-background text-foreground">🌍 Target Summit: All Scope</option>
+                     <option value="all" className="bg-background text-foreground">🌍 All Events</option>
                      {events.map(ev => (
                        <option key={ev.id} value={ev.id} className="bg-background text-foreground">
                          📌 {ev.title} ({ev.city})
@@ -308,7 +308,7 @@ export default function ParticipantsManagement() {
                  size="sm"
                  className="h-9 px-4 text-xs shrink-0"
                >
-                  <Plus className="h-3.5 w-3.5 mr-1" /> Onboard Profile
+                  <Plus className="h-3.5 w-3.5 mr-1" /> Add Participant
                </GradientButton>
             </div>
 
@@ -348,8 +348,8 @@ export default function ParticipantsManagement() {
       {/* ── LIST ROWS ── */}
       <div className="space-y-3">
          <div className="flex items-center justify-between px-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-            <span>Identity Bio & Structural Assignment</span>
-            <span>Organizer Authorization Actions</span>
+            <span>Participant Details</span>
+            <span>Actions</span>
          </div>
 
          <AnimatePresence mode="popLayout">
@@ -359,7 +359,7 @@ export default function ParticipantsManagement() {
                 className="p-12 text-center glass rounded-2xl border border-dashed border-border"
               >
                  <Users className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
-                 <p className="text-xs font-bold text-foreground">No records matching specified filters.</p>
+                 <p className="text-xs font-bold text-foreground">No participants found matching your filters.</p>
               </motion.div>
             ) : (
               filteredList.map(item => (
@@ -400,7 +400,7 @@ export default function ParticipantsManagement() {
                    <div className="flex items-center justify-between sm:justify-end gap-4 shrink-0 border-t sm:border-t-0 pt-2 sm:pt-0 border-border/40">
                       <div className="text-left sm:text-right">
                          <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground block">
-                           {activeTab === "Exhibitors" ? "Assigned Hall Space" : activeTab === "Speakers" ? "Scheduled Stage" : "Tier Encryption"}
+                           Assignment
                          </span>
                          <span className={cn("text-xs font-bold font-mono", activeTab === "Exhibitors" && item.status !== "Confirmed" ? "text-amber-500" : "text-foreground")}>
                            {item.meta}
@@ -427,14 +427,14 @@ export default function ParticipantsManagement() {
                          <button
                            onClick={(e) => { e.stopPropagation(); setSelectedParticipant(item); }}
                            className="h-8 w-8 rounded-lg bg-background border border-border grid place-items-center text-muted-foreground hover:text-primary transition-colors"
-                           title="Inspect audit profile"
+                           title="View Profile"
                          >
                             <Eye className="h-3.5 w-3.5" />
                          </button>
                          <button
                            onClick={(e) => handleDelete(item.id, activeTab, e)}
                            className="h-8 w-8 rounded-lg bg-background border border-border grid place-items-center text-muted-foreground hover:text-destructive transition-colors opacity-70 hover:opacity-100"
-                           title="Purge profile"
+                           title="Delete"
                          >
                             <Trash2 className="h-3.5 w-3.5" />
                          </button>
@@ -466,9 +466,9 @@ export default function ParticipantsManagement() {
               <div className="flex items-center justify-between pb-3 border-b border-border/60 mb-4">
                 <div>
                   <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-                    <Layout className="h-4 w-4 text-primary" /> Assign Booth Metrics
+                    <Layout className="h-4 w-4 text-primary" /> Assign Exhibition Booth
                   </h3>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">Define layout telemetry for <span className="font-bold text-foreground">{targetExhibitorForBooth.name}</span></p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">Configure booth assignment for <span className="font-bold text-foreground">{targetExhibitorForBooth.name}</span></p>
                 </div>
                 <button onClick={() => setTargetExhibitorForBooth(null)} className="text-muted-foreground hover:text-foreground">
                   <X className="h-4 w-4" />
@@ -478,7 +478,7 @@ export default function ParticipantsManagement() {
               <form onSubmit={handleExecuteBoothAssignment} className="space-y-4">
                 <div>
                   <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block mb-1">
-                    Booth Number ID *
+                    Booth Number *
                   </label>
                   <input 
                     type="text" 
@@ -488,12 +488,12 @@ export default function ParticipantsManagement() {
                     placeholder="e.g. A-101, C-404" 
                     className="w-full px-3 py-2 text-xs bg-accent/20 border border-border rounded-xl text-foreground font-mono font-bold outline-none focus:border-primary transition-all"
                   />
-                  <span className="text-[9px] text-muted-foreground block mt-1">Unique physical coordinate mapping onto floor grids.</span>
+                  <span className="text-[9px] text-muted-foreground block mt-1">Physical booth identifier on the exhibition floor.</span>
                 </div>
 
                 <div>
                   <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block mb-1">
-                    Spatial Classification Tier
+                    Booth Size & Type
                   </label>
                   <select
                     value={customBoothTier}
@@ -507,10 +507,6 @@ export default function ParticipantsManagement() {
                   </select>
                 </div>
 
-                <div className="p-3 rounded-xl bg-accent/10 border border-border/40 text-[10px] text-muted-foreground leading-tight">
-                  ⚡ <span className="font-bold text-foreground">Downstream Hook</span>: Allocating these dimensions instantly updates the live companion dashboard for this brand entity.
-                </div>
-
                 <div className="pt-2 flex justify-end gap-2 border-t border-border/60">
                   <button 
                     type="button" 
@@ -520,7 +516,7 @@ export default function ParticipantsManagement() {
                     Cancel
                   </button>
                   <GradientButton type="submit" size="sm" className="h-8 text-xs px-4">
-                    Confirm Allocation
+                    Confirm Assignment
                   </GradientButton>
                 </div>
               </form>
@@ -568,15 +564,15 @@ export default function ParticipantsManagement() {
                  <div className="p-5 overflow-y-auto space-y-4 flex-1 no-scrollbar text-xs">
                     <div className="p-4 rounded-xl bg-accent/10 border border-border/40 space-y-3">
                        <span className="text-[10px] font-bold uppercase tracking-wider text-primary block">
-                         Assigned Blueprint Parameters
+                         Event Assignment Details
                        </span>
                        <div className="grid grid-cols-2 gap-3 font-mono">
                           <div>
-                             <span className="text-[9px] text-muted-foreground block font-sans uppercase">Space Vector String</span>
+                             <span className="text-[9px] text-muted-foreground block font-sans uppercase">Assigned Location</span>
                              <span className="font-bold text-foreground">{selectedParticipant.meta}</span>
                           </div>
                           <div>
-                             <span className="text-[9px] text-muted-foreground block font-sans uppercase">Status Index</span>
+                             <span className="text-[9px] text-muted-foreground block font-sans uppercase">Status</span>
                              <span className="font-bold text-primary">{selectedParticipant.status}</span>
                           </div>
                        </div>
@@ -592,7 +588,7 @@ export default function ParticipantsManagement() {
                               size="sm"
                               className="text-[10px] h-7 px-3"
                             >
-                               Update Assigned Booth Metrics
+                               Update Booth Assignment
                             </GradientButton>
                          </div>
                        )}
@@ -600,10 +596,10 @@ export default function ParticipantsManagement() {
 
                     <div className="space-y-2">
                        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
-                         Professional Bio Background
+                         Biography / Bio
                        </span>
                        <p className="text-muted-foreground bg-accent/5 p-3 rounded-xl border border-border/40 leading-relaxed font-sans">
-                          "{selectedParticipant.bio}"
+                          "{selectedParticipant.bio || 'Experienced event participant and designated delegate.'}"
                        </p>
                     </div>
 
@@ -611,14 +607,14 @@ export default function ParticipantsManagement() {
                        <div className="p-2.5 rounded-xl bg-background border border-border flex items-center gap-2">
                           <Mail className="h-3.5 w-3.5 text-primary shrink-0" />
                           <div className="min-w-0">
-                             <span className="text-[9px] text-muted-foreground block font-bold">Direct Mail</span>
+                             <span className="text-[9px] text-muted-foreground block font-bold">Email Address</span>
                              <span className="text-[11px] font-medium text-foreground truncate block">{selectedParticipant.email}</span>
                           </div>
                        </div>
                        <div className="p-2.5 rounded-xl bg-background border border-border flex items-center gap-2">
                           <Phone className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
                           <div className="min-w-0">
-                             <span className="text-[9px] text-muted-foreground block font-bold">Mobile Link</span>
+                             <span className="text-[9px] text-muted-foreground block font-bold">Phone Number</span>
                              <span className="text-[11px] font-medium text-foreground truncate block">{selectedParticipant.phone || "+1 (555) 019-8822"}</span>
                           </div>
                        </div>
@@ -627,13 +623,13 @@ export default function ParticipantsManagement() {
 
                  <div className="p-4 border-t border-border bg-accent/20 flex items-center justify-between text-[10px]">
                     <span className="text-muted-foreground flex items-center gap-1">
-                       <ShieldCheck className="h-3 w-3 text-emerald-500" /> Identity Ledger Verified
+                       <ShieldCheck className="h-3 w-3 text-emerald-500" /> Verified Participant Profile
                     </span>
                     <button
                       onClick={() => setSelectedParticipant(null)}
                       className="px-3 py-1 rounded-lg bg-background text-foreground font-bold hover:bg-accent border border-border"
                     >
-                       Dismiss
+                       Close
                     </button>
                  </div>
               </motion.div>
@@ -661,10 +657,10 @@ export default function ParticipantsManagement() {
                <div className="flex items-center justify-between px-6 py-4 bg-accent/20 border-b border-border">
                   <div>
                      <span className="text-[9px] font-bold font-mono text-primary uppercase tracking-widest block">
-                        Master Identity Provisioner
+                        Add Participant
                      </span>
                      <h2 className="text-sm font-bold text-foreground">
-                        Onboard New Participant Entity
+                        Add New Participant
                      </h2>
                   </div>
                   <button onClick={() => setShowOnboardModal(false)} className="text-muted-foreground hover:text-foreground">
@@ -676,7 +672,7 @@ export default function ParticipantsManagement() {
                   <div className="grid grid-cols-2 gap-3">
                      <div>
                         <label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground block mb-1">
-                           Target Role Classification *
+                           Role *
                         </label>
                         <select
                           value={onboardForm.role}
@@ -692,7 +688,7 @@ export default function ParticipantsManagement() {
 
                      <div>
                         <label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground block mb-1">
-                           Target Host Convention *
+                           Event *
                         </label>
                         <select
                           value={onboardForm.eventId}
@@ -710,7 +706,7 @@ export default function ParticipantsManagement() {
 
                   <div>
                      <label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground block mb-1">
-                        Full Representative / Entity Name *
+                        Full Name *
                      </label>
                      <input
                        required
@@ -725,7 +721,7 @@ export default function ParticipantsManagement() {
                   <div className="grid grid-cols-2 gap-3">
                      <div>
                         <label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground block mb-1">
-                           Electronic Mail Link *
+                           Email Address *
                         </label>
                         <input
                           required
@@ -739,7 +735,7 @@ export default function ParticipantsManagement() {
 
                      <div>
                         <label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground block mb-1">
-                           Corporate Brand Affiliate
+                           Company / Organization
                         </label>
                         <input
                           type="text"
@@ -753,18 +749,15 @@ export default function ParticipantsManagement() {
 
                   <div>
                      <label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground block mb-1">
-                        Professional Bio / Overview String
+                        Biography
                      </label>
                      <textarea
                        rows={2}
                        value={onboardForm.bio}
                        onChange={e => setOnboardForm(f => ({ ...f, bio: e.target.value }))}
+                       placeholder="Professional bio or notes about this participant..."
                        className="w-full p-2 bg-background border border-border rounded-xl font-medium text-foreground outline-none focus:border-primary transition-all text-xs"
                      />
-                  </div>
-
-                  <div className="p-3 bg-primary/5 border border-primary/20 rounded-xl text-[10px] text-muted-foreground leading-tight">
-                     ✨ <span className="font-bold text-foreground">Immediate Sync</span>: Submitting injects the entity into the live master roster instantly. Selecting <span className="font-bold text-primary">Exhibitor</span> leaves their booth footprint ready for floor coordinate allocation.
                   </div>
 
                   <div className="pt-3 border-t border-border flex justify-end gap-2">
@@ -776,7 +769,7 @@ export default function ParticipantsManagement() {
                         Cancel
                      </button>
                      <GradientButton type="submit" size="sm" className="h-8 text-xs px-4">
-                        Provision Identity
+                        Add Participant
                      </GradientButton>
                   </div>
                </form>

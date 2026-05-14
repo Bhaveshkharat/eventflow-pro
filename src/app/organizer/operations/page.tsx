@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Users, Truck, Hotel, Plane, 
@@ -8,84 +8,180 @@ import {
   Trash2, Eye, X, Mail, Phone, 
   Briefcase, CheckCircle2, DollarSign,
   ChevronRight, MessageSquare, ShieldCheck,
-  Zap, Wrench, Check
+  Zap, Wrench, Check, Layers, Tag
 } from "lucide-react";
-import { DashboardShell } from "@/components/layout/DashboardShell";
+import { DashboardShell } from "@/components/layout/DashboardShell"; // trigger rebuild
 import { GlassCard } from "@/components/ui-ext/GlassCard";
 import { GradientButton } from "@/components/ui-ext/GradientButton";
 import { events } from "@/data/mock";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { 
+  GlobalPartner, 
+  PartnerService, 
+  getPersistedPartners, 
+  savePersistedPartners, 
+  pushNewPartnerToStorage 
+} from "@/lib/partnersStore";
 
 const partnerTabs = ["All Partners", "Hotel Agents", "Travel Agents", "Vendors"] as const;
 
 export default function OrganizerOperations() {
+  const [partnersList, setPartnersList] = useState<GlobalPartner[]>([]);
   const [activeTab, setActiveTab] = useState<typeof partnerTabs[number]>("All Partners");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedEventId, setSelectedEventId] = useState("all");
-  const [selectedPartner, setSelectedPartner] = useState<any | null>(null);
+  
+  // Dialog state maps
+  const [selectedPartner, setSelectedPartner] = useState<GlobalPartner | null>(null);
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
 
-  // Contracted partner pipelines across events
-  const [partnersList, setPartnersList] = useState([
-    { 
-      id: "pt-1", eventId: "techsummit-26", name: "SkyTravel Logistics", type: "Travel", 
-      eventsCount: 8, rating: 4.8, status: "Active", commission: 12, 
-      email: "corporate@skytravel.io", phone: "+1 (555) 019-2244",
-      avatar: "https://images.unsplash.com/photo-1436491865332-7a61e109cc05?w=120&auto=format&fit=crop&q=80",
-      bio: "Global charter flight specialist providing discounted multi-leg routing bundles for incoming conference delegates.",
-      repName: "Sarah Jenkins (Enterprise Lead)", region: "North America & Europe"
-    },
-    { 
-      id: "pt-2", eventId: "techsummit-26", name: "Grand Marquise Suites", type: "Hotel", 
-      eventsCount: 12, rating: 4.9, status: "Active", commission: 10,
-      email: "reservations@grandmarquise.com", phone: "+1 (555) 431-9900",
-      avatar: "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=120&auto=format&fit=crop&q=80",
-      bio: "Five-star luxury complex located adjacent to the convention corridor offering automated programmatic API blocks.",
-      repName: "Marcus Vance (VP Partnerships)", region: "Downtown Hub"
-    },
-    { 
-      id: "pt-3", eventId: "designweek-26", name: "Peak Visual Vendors", type: "Vendor", 
-      eventsCount: 4, rating: 4.5, status: "Assigned Service Crew", commission: 15,
-      email: "rigging@peakvisuals.de", phone: "+49 89 220199",
-      avatar: "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=120&auto=format&fit=crop&q=80",
-      bio: "High-fidelity lighting, display rigging, and immersive panoramic video screen rental deployments serving assigned client stalls.",
-      repName: "Hans Gruber (Staging Architect)", region: "EU Central Zone"
-    },
-    { 
-      id: "pt-4", eventId: "fintech-asia", name: "Global Stay Connect", type: "Hotel", 
-      eventsCount: 24, rating: 4.7, status: "Active", commission: 8,
-      email: "partners@globalstay.sg", phone: "+65 6889 1200",
-      avatar: "https://images.unsplash.com/photo-1551882532-8dbf0a0c7c72?w=120&auto=format&fit=crop&q=80",
-      bio: "Distributed block booking engine syncing with active attendee check-in portals to optimize vacancy yield.",
-      repName: "Chloe Tan (Yield Director)", region: "Asia Pacific"
-    },
-    { 
-      id: "pt-5", eventId: "techsummit-26", name: "Transit Shuttle Pro", type: "Travel", 
-      eventsCount: 6, rating: 4.6, status: "Active", commission: 10,
-      email: "dispatch@transitshuttle.it", phone: "+39 02 1199 4432",
-      avatar: "https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=120&auto=format&fit=crop&q=80",
-      bio: "Dedicated private electric shuttle networks looping continuously between destination transport hubs and staging halls.",
-      repName: "Mateo Rossi (Fleet Manager)", region: "Milan Metro Loop"
+  // Load from centralized client store on module mount
+  useEffect(() => {
+    setPartnersList(getPersistedPartners());
+  }, []);
+
+  // Invitation Buffer Form state mapping strictly to specific target events
+  const [newInviteForm, setNewInviteForm] = useState({
+    name: "",
+    company: "",
+    email: "",
+    phone: "",
+    providedService: "",
+    primaryType: "Vendor" as "Hotel" | "Travel" | "Vendor",
+    selectedServices: ["Vendor"] as PartnerService[],
+    targetEventId: "techsummit-26",
+    commissionVal: "12",
+    regionCover: "Global & Event Hub"
+  });
+
+  const toggleServiceCapability = (srv: PartnerService) => {
+    setNewInviteForm(prev => {
+      const exists = prev.selectedServices.includes(srv);
+      if (exists && prev.selectedServices.length === 1) {
+        toast.error("A partner entity must map at least one operational capability.");
+        return prev;
+      }
+      if (exists) {
+        return { ...prev, selectedServices: prev.selectedServices.filter(s => s !== srv) };
+      } else {
+        return { ...prev, selectedServices: [...prev.selectedServices, srv] };
+      }
+    });
+  };
+
+  const handleCommitPartnerInvitation = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newInviteForm.name.trim() || !newInviteForm.email.trim()) {
+      toast.error("Please supply valid entity identification strings.");
+      return;
     }
-  ]);
+
+    const targetEvent = events.find(ev => ev.id === newInviteForm.targetEventId);
+
+    const generatedPartner: GlobalPartner = {
+      id: `gp-${Date.now()}`,
+      eventId: newInviteForm.targetEventId,
+      name: newInviteForm.name.trim(),
+      company: newInviteForm.company.trim() || `${newInviteForm.name.trim()} Agency`,
+      services: newInviteForm.selectedServices,
+      providedService: newInviteForm.providedService.trim() || "Custom Event Operations & Infrastructure",
+      type: newInviteForm.primaryType,
+      eventsCount: 1,
+      rating: 4.8,
+      status: "Active Sync",
+      commission: Number(newInviteForm.commissionVal) || 12,
+      split: `$${(Math.random() * 8 + 4).toFixed(1)}k Base Agreement`,
+      email: newInviteForm.email.trim(),
+      phone: newInviteForm.phone.trim() || "+1 (555) 891-0022",
+      avatar: `https://api.dicebear.com/7.x/shapes/svg?seed=${encodeURIComponent(newInviteForm.name)}`,
+      bio: `Dynamically invited multi-service supply contractor mapped explicitly to execute framework requests for ${targetEvent?.title || "selected timeline"}.`,
+      repName: "Assigned Client Liaison",
+      region: newInviteForm.regionCover.trim() || targetEvent?.city || "Host Base"
+    };
+
+    // Store in continuous persistent registry so event specific views map instantly
+    const refreshed = pushNewPartnerToStorage(generatedPartner);
+    setPartnersList(refreshed);
+
+    toast.success(`Successfully dispatched secure invite handshake to "${generatedPartner.name}". Synchronized directly under ${targetEvent?.title || "target event"} listings!`);
+    
+    // Reset buffer
+    setNewInviteForm({
+      name: "",
+      company: "",
+      email: "",
+      phone: "",
+      providedService: "",
+      primaryType: "Vendor",
+      selectedServices: ["Vendor"],
+      targetEventId: "techsummit-26",
+      commissionVal: "12",
+      regionCover: "Global & Event Hub"
+    });
+    setIsInviteModalOpen(false);
+  };
+
+  // State specifically for binding a Vendor entity as authorized Staging Service Crew
+  const [targetVendorForExecution, setTargetVendorForExecution] = useState<GlobalPartner | null>(null);
+  const [targetAssignEventId, setTargetAssignEventId]           = useState("techsummit-26");
+
+  const handleConfirmVendorAssignment = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!targetVendorForExecution) return;
+
+    const modified = partnersList.map(p => {
+      if (p.id !== targetVendorForExecution.id) return p;
+      return {
+        ...p,
+        eventId: targetAssignEventId,
+        status: "Assigned Service Crew"
+      };
+    });
+
+    setPartnersList(modified);
+    savePersistedPartners(modified);
+
+    if (selectedPartner && selectedPartner.id === targetVendorForExecution.id) {
+      setSelectedPartner(prev => prev ? ({ ...prev, eventId: targetAssignEventId, status: "Assigned Service Crew" }) : null);
+    }
+
+    const matchedEv = events.find(ev => ev.id === targetAssignEventId);
+    toast.success(`Staging authority locked! ${targetVendorForExecution.name} maps to ${matchedEv?.title || "target hall"} specifications.`);
+    setTargetVendorForExecution(null);
+  };
+
+  const handleDeletePartner = (id: string, name: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const truncated = partnersList.filter(p => p.id !== id);
+    setPartnersList(truncated);
+    savePersistedPartners(truncated);
+    toast.success(`Commercial link to "${name}" successfully dissolved.`);
+  };
+
+  const getEventTitle = (id: string) => {
+    const matched = events.find(e => e.id === id);
+    return matched ? matched.title : "Global Portfolio";
+  };
 
   // Aggregate Computation Variables
-  const totalHotelAgents  = partnersList.filter(p => p.type === "Hotel").length;
-  const totalTravelAgents = partnersList.filter(p => p.type === "Travel").length;
-  const totalVendors      = partnersList.filter(p => p.type === "Vendor").length;
+  const totalHotelAgents  = partnersList.filter(p => p.type === "Hotel" || p.services.includes("Hotel")).length;
+  const totalTravelAgents = partnersList.filter(p => p.type === "Travel" || p.services.includes("Travel")).length;
+  const totalVendors      = partnersList.filter(p => p.type === "Vendor" || p.services.includes("Vendor")).length;
   const totalPartners     = partnersList.length;
 
   const tabFilteredList = useMemo(() => {
     if (activeTab === "All Partners") return partnersList;
-    if (activeTab === "Hotel Agents") return partnersList.filter(p => p.type === "Hotel");
-    if (activeTab === "Travel Agents") return partnersList.filter(p => p.type === "Travel");
-    return partnersList.filter(p => p.type === "Vendor");
+    if (activeTab === "Hotel Agents") return partnersList.filter(p => p.services.includes("Hotel"));
+    if (activeTab === "Travel Agents") return partnersList.filter(p => p.services.includes("Travel"));
+    return partnersList.filter(p => p.services.includes("Vendor"));
   }, [activeTab, partnersList]);
 
   const fullyFilteredList = useMemo(() => {
     return tabFilteredList.filter(item => {
       const matchesSearch = 
         item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.company.toLowerCase().includes(searchQuery.toLowerCase()) ||
         item.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
         item.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
         item.repName.toLowerCase().includes(searchQuery.toLowerCase());
@@ -96,46 +192,10 @@ export default function OrganizerOperations() {
     });
   }, [tabFilteredList, searchQuery, selectedEventId]);
 
-  const handleDeletePartner = (id: string, name: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setPartnersList(prev => prev.filter(p => p.id !== id));
-    toast.success(`Commercial link to "${name}" successfully dissolved.`);
-  };
-
-  const getEventTitle = (id: string) => {
-    const matched = events.find(e => e.id === id);
-    return matched ? matched.title : "Global Portfolio";
-  };
-
-  // State specifically for binding a Vendor entity as authorized Staging Service Crew
-  const [targetVendorForExecution, setTargetVendorForExecution] = useState<any | null>(null);
-  const [targetAssignEventId, setTargetAssignEventId]           = useState("techsummit-26");
-
-  const handleConfirmVendorAssignment = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!targetVendorForExecution) return;
-
-    setPartnersList(prev => prev.map(p => {
-      if (p.id !== targetVendorForExecution.id) return p;
-      return {
-        ...p,
-        eventId: targetAssignEventId,
-        status: "Assigned Service Crew"
-      };
-    }));
-
-    if (selectedPartner && selectedPartner.id === targetVendorForExecution.id) {
-      setSelectedPartner((prev: any) => ({ ...prev, eventId: targetAssignEventId, status: "Assigned Service Crew" }));
-    }
-
-    toast.success(`Staging authority locked! ${targetVendorForExecution.name} maps to target hall specifications.`);
-    setTargetVendorForExecution(null);
-  };
-
   return (
-    <DashboardShell 
-      title="Partner Hub & Subcontractor Frameworks" 
-      subtitle="Govern commercial supply partners, external routing hubs, and instantiate direct Service Crew bindings answering Exhibitor physical setup parameters."
+    <DashboardShell
+      title="Partner Hub"
+      subtitle="Manage partner agencies, assign event-specific service teams, and configure commission agreements."
     >
       {/* ── CENTRAL WORKFLOW NOTICE ── */}
       <div className="p-4 rounded-xl glass border border-border/40 bg-accent/10 mb-8 flex items-center justify-between gap-4">
@@ -245,8 +305,13 @@ export default function OrganizerOperations() {
                      </div>
                   </div>
 
-                  <GradientButton onClick={() => toast.success("Partner invitation setup instantiated.")} size="sm" className="h-8 px-3 text-xs shrink-0">
-                    <Plus className="h-3.5 w-3.5 mr-1" /> Invite Partner
+                  {/* Specifically Requested Invitation trigger mounting our premium glassmorphic target mapping modal */}
+                  <GradientButton 
+                    onClick={() => setIsInviteModalOpen(true)} 
+                    size="sm" 
+                    className="h-9 px-4 text-xs shrink-0 shadow-sm"
+                  >
+                    <Plus className="h-4 w-4 mr-1.5" /> Invite Partner
                   </GradientButton>
                </div>
 
@@ -256,9 +321,9 @@ export default function OrganizerOperations() {
                     const isActive = activeTab === tab;
                     const mapCounts: Record<string, number> = {
                       "All Partners": partnersList.length,
-                      "Hotel Agents": partnersList.filter(p => p.type === "Hotel").length,
-                      "Travel Agents": partnersList.filter(p => p.type === "Travel").length,
-                      "Vendors": partnersList.filter(p => p.type === "Vendor").length
+                      "Hotel Agents": partnersList.filter(p => p.services.includes("Hotel")).length,
+                      "Travel Agents": partnersList.filter(p => p.services.includes("Travel")).length,
+                      "Vendors": partnersList.filter(p => p.services.includes("Vendor")).length
                     };
                     return (
                       <button
@@ -285,8 +350,8 @@ export default function OrganizerOperations() {
             {/* List Rows */}
             <div className="space-y-3">
                <div className="flex items-center justify-between px-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                  <span>Contracted Commercial Agent Entity</span>
-                  <span>Ledger Parameters & Assignment Actions</span>
+                  <span>Partner Details</span>
+                  <span>Actions</span>
                </div>
 
                <AnimatePresence mode="popLayout">
@@ -296,7 +361,8 @@ export default function OrganizerOperations() {
                       className="p-10 text-center glass rounded-2xl border border-dashed border-border"
                     >
                        <Briefcase className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
-                       <p className="text-xs font-bold text-foreground">No partners matching active query logic.</p>
+                       <p className="text-xs font-bold text-foreground">No partners matching active filters.</p>
+                       <p className="text-[10px] text-muted-foreground mt-0.5">Click 'Invite Partner' above to add new partners to the ecosystem.</p>
                     </motion.div>
                   ) : (
                     fullyFilteredList.map(item => (
@@ -308,47 +374,75 @@ export default function OrganizerOperations() {
                         exit={{ opacity: 0, scale: 0.95 }}
                         onClick={() => setSelectedPartner(item)}
                         className={cn(
-                          "p-4 rounded-xl glass border cursor-pointer transition-all flex items-center justify-between gap-4 group",
+                          "p-4 rounded-xl glass border cursor-pointer transition-all flex items-center justify-between gap-4 group relative overflow-hidden",
                           item.status === "Assigned Service Crew" ? "border-primary/40 bg-primary/[0.02]" : "border-border/40 hover:border-primary/30"
                         )}
                       >
                          <div className="flex items-center gap-3 min-w-0 flex-1">
-                            <img src={item.avatar} alt="" className="h-10 w-10 rounded-lg object-cover shrink-0 ring-1 ring-border group-hover:ring-primary/40 transition-all" />
+                            <img src={item.avatar} alt="" className="h-10 w-10 rounded-lg object-cover shrink-0 ring-1 ring-border group-hover:ring-primary/40 transition-all bg-background" />
                             <div className="min-w-0 flex-1">
                                <div className="flex items-center gap-2 flex-wrap">
                                   <h4 className="font-bold text-xs text-foreground truncate group-hover:text-primary transition-colors">{item.name}</h4>
+                                  
+                                  {/* Overlapping service pills mapped securely */}
+                                  <div className="flex items-center gap-1 shrink-0">
+                                    {item.services.map(srv => {
+                                      const clr = {
+                                        Hotel: "bg-blue-500/10 text-blue-400 border-blue-500/20",
+                                        Travel: "bg-purple-500/10 text-purple-400 border-purple-500/20",
+                                        Vendor: "bg-amber-500/10 text-amber-500 border-amber-500/20"
+                                      };
+                                      return (
+                                        <span key={srv} className={cn("px-1 py-0.2 rounded text-[8px] font-bold font-mono border uppercase tracking-wider", clr[srv])}>
+                                          {srv}
+                                        </span>
+                                      );
+                                    })}
+                                  </div>
+
                                   <span className={cn(
-                                    "text-[9px] font-bold px-1.5 py-0.2 rounded font-mono uppercase shrink-0",
+                                    "text-[9px] font-bold px-1.5 py-0.2 rounded font-mono uppercase shrink-0 ml-auto sm:ml-0",
                                     item.status === "Assigned Service Crew" ? "bg-primary/10 text-primary border border-primary/20" :
-                                    item.status === "Active" ? "bg-emerald-500/10 text-emerald-500" : "bg-accent text-amber-500"
+                                    item.status.includes("Active") ? "bg-emerald-500/10 text-emerald-500" : "bg-accent text-amber-500"
                                   )}>
                                     {item.status}
                                   </span>
                                </div>
-                               <div className="flex items-center gap-2 mt-0.5 text-[11px] text-muted-foreground">
-                                  <span className="font-semibold text-foreground/80">{item.type} Hub</span>
+
+                               {/* Render specific vendor service contribution */}
+                               <div className="mt-1 flex items-center gap-1.5">
+                                  <span className="text-[9px] uppercase tracking-wider font-bold text-amber-500 font-mono bg-amber-500/10 px-1.5 py-0.2 rounded border border-amber-500/20 shrink-0">
+                                    Provided Service
+                                  </span>
+                                  <span className="text-xs font-bold text-foreground/90 truncate">
+                                    {item.providedService || "General Operations & Equipment"}
+                                  </span>
+                               </div>
+
+                               <div className="flex items-center gap-2 mt-1 text-[11px] text-muted-foreground">
+                                  <span className="font-semibold text-foreground/80">{item.company}</span>
                                   <span>·</span>
-                                  <span className="truncate">Rep: {item.repName.split(" ")[0]}</span>
+                                  <span className="truncate">📧 {item.email}</span>
                                   <span>·</span>
-                                  <span className="text-primary font-bold">★ {item.rating}</span>
+                                  <span className="text-primary font-bold shrink-0">★ {item.rating}</span>
                                </div>
                             </div>
                          </div>
 
                          <div className="flex items-center gap-4 shrink-0">
                             <div className="hidden sm:block text-right">
-                               <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground block">Mapped Hall Base</span>
-                               <span className="text-xs font-semibold truncate max-w-[140px] text-foreground/90">📌 {getEventTitle(item.eventId)}</span>
+                               <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground block">Assigned Event</span>
+                               <span className="text-xs font-semibold truncate max-w-[140px] text-foreground/90 block">📌 {getEventTitle(item.eventId)}</span>
                             </div>
 
                             <div className="hidden md:block text-right px-3 border-l border-border/60">
                                <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground block">Comm.</span>
-                               <span className="text-xs font-bold font-mono text-emerald-500">{item.commission}%</span>
+                               <span className="text-xs font-bold font-mono text-emerald-500 block">{item.commission}%</span>
                             </div>
 
                             {/* Service Crew Mapping Button */}
                             <div className="flex items-center gap-1 shrink-0 border-l border-border/60 pl-2">
-                               {item.type === "Vendor" && (
+                               {item.services.includes("Vendor") && (
                                  <GradientButton
                                    onClick={(e) => {
                                      e.stopPropagation();
@@ -358,20 +452,20 @@ export default function OrganizerOperations() {
                                    size="sm"
                                    className="text-[10px] h-8 px-2.5 shrink-0 mr-1"
                                  >
-                                    Assign Service Crew
+                                    Assign Tasks
                                  </GradientButton>
                                )}
                                <button
                                  onClick={(e) => { e.stopPropagation(); setSelectedPartner(item); }}
                                  className="h-8 w-8 rounded-lg bg-background border border-border grid place-items-center text-muted-foreground hover:text-primary transition-colors"
-                                 title="Inspect Complete Contract Logs"
+                                 title="View Profile"
                                >
                                   <Eye className="h-3.5 w-3.5" />
                                </button>
                                <button
                                  onClick={(e) => handleDeletePartner(item.id, item.name, e)}
                                  className="h-8 w-8 rounded-lg bg-background border border-border grid place-items-center text-muted-foreground hover:text-destructive transition-colors opacity-70 hover:opacity-100"
-                                 title="Dissolve link"
+                                 title="Delete"
                                >
                                   <Trash2 className="h-3.5 w-3.5" />
                                </button>
@@ -439,6 +533,258 @@ export default function OrganizerOperations() {
          </div>
       </div>
 
+      {/* ═════════════════════════════════════════════════════════════════════════════
+          OVERHAULED HYPER-VISIBLE PREMIUM GLASSMORPHIC PARTNER INVITATION ENGINE
+          ═════════════════════════════════════════════════════════════════════════════ */}
+      <AnimatePresence>
+        {isInviteModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }}
+              onClick={() => setIsInviteModalOpen(false)}
+              className="absolute inset-0 bg-neutral-950/85 backdrop-blur-xl"
+            />
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 20 }}
+              transition={{ type: "spring", damping: 24, stiffness: 300 }}
+              className="relative w-full max-w-2xl bg-neutral-900/95 border-2 border-primary/40 rounded-2xl shadow-[0_0_50px_-12px_rgba(var(--primary),0.3)] z-10 overflow-hidden flex flex-col max-h-[90vh]"
+            >
+              <div className="flex items-center justify-between px-6 py-5 bg-gradient-to-r from-primary/30 via-background/90 to-background/90 border-b border-primary/30 backdrop-blur-md">
+                <div>
+                  <span className="text-[10px] font-mono font-bold text-primary uppercase tracking-widest block mb-0.5 flex items-center gap-1">
+                    <Zap className="h-3 w-3" /> Operations Dispatch Pipeline
+                  </span>
+                  <h2 className="font-extrabold text-base text-foreground tracking-tight">Invite Partner Agency & Bind Target Timeline</h2>
+                </div>
+                <button
+                  onClick={() => setIsInviteModalOpen(false)}
+                  className="h-8 w-8 rounded-xl bg-background/80 border-2 border-border flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors shadow-xs"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <form onSubmit={handleCommitPartnerInvitation} className="p-6 space-y-6 overflow-y-auto no-scrollbar flex-1">
+                <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 space-y-4">
+                  <div>
+                    <label className="text-xs font-extrabold text-foreground uppercase tracking-wider block mb-2 flex items-center gap-1.5">
+                      <Tag className="h-3.5 w-3.5 text-primary" /> Commercial Entity Identity Details
+                    </label>
+
+                    <div className="grid sm:grid-cols-2 gap-3 mb-3">
+                      <div>
+                        <span className="text-[10px] text-muted-foreground font-extrabold uppercase tracking-wider block mb-1">Commercial Brand Identifier *</span>
+                        <input
+                          required
+                          type="text"
+                          value={newInviteForm.name}
+                          onChange={e => setNewInviteForm(f => ({ ...f, name: e.target.value }))}
+                          placeholder="e.g. Apex Visual & Sound Crew"
+                          className="w-full bg-background/95 border-2 border-border/80 rounded-xl py-2.5 px-3.5 text-xs outline-none focus:border-primary text-foreground placeholder:text-muted-foreground/60 font-bold shadow-inner transition-all"
+                        />
+                      </div>
+
+                      <div>
+                        <span className="text-[10px] text-muted-foreground font-extrabold uppercase tracking-wider block mb-1">Corporate Parent Legal String</span>
+                        <input
+                          type="text"
+                          value={newInviteForm.company}
+                          onChange={e => setNewInviteForm(f => ({ ...f, company: e.target.value }))}
+                          placeholder="e.g. Apex Global Stages LLC"
+                          className="w-full bg-background/95 border-2 border-border/80 rounded-xl py-2.5 px-3.5 text-xs outline-none focus:border-primary text-foreground placeholder:text-muted-foreground/60 font-bold shadow-inner transition-all"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid sm:grid-cols-2 gap-3">
+                      <div>
+                        <span className="text-[10px] text-muted-foreground font-extrabold uppercase tracking-wider block mb-1">Secure Operations Email String *</span>
+                        <div className="relative">
+                          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                          <input
+                            required
+                            type="email"
+                            value={newInviteForm.email}
+                            onChange={e => setNewInviteForm(f => ({ ...f, email: e.target.value }))}
+                            placeholder="dispatch@apexstages.internal"
+                            className="w-full bg-background/95 border-2 border-border/80 rounded-xl py-2.5 pl-9 pr-3.5 text-xs outline-none focus:border-primary text-foreground placeholder:text-muted-foreground/60 font-bold shadow-inner transition-all"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <span className="text-[10px] text-muted-foreground font-extrabold uppercase tracking-wider block mb-1">Dispatch Telecom Channel</span>
+                        <div className="relative">
+                          <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                          <input
+                            type="text"
+                            value={newInviteForm.phone}
+                            onChange={e => setNewInviteForm(f => ({ ...f, phone: e.target.value }))}
+                            placeholder="+1 (555) 321-9988"
+                            className="w-full bg-background/95 border-2 border-border/80 rounded-xl py-2.5 pl-9 pr-3.5 text-xs outline-none focus:border-primary text-foreground placeholder:text-muted-foreground/60 font-bold shadow-inner transition-all"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <span className="text-[10px] text-amber-500 font-extrabold uppercase tracking-wider block mb-1">Provided Service Provision (What Vendor Will Provide)</span>
+                      <input
+                        type="text"
+                        value={newInviteForm.providedService}
+                        onChange={e => setNewInviteForm(f => ({ ...f, providedService: e.target.value }))}
+                        placeholder="e.g. Panoramic Stage Rigging, PA Audio Arrays, Catering Stations"
+                        className="w-full bg-background/95 border-2 border-amber-500/30 focus:border-amber-500 rounded-xl py-2.5 px-3.5 text-xs outline-none text-foreground placeholder:text-muted-foreground/60 font-bold shadow-inner transition-all"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Specifically requested capability mapping: Vendor, Hotel, Travel, or overlapping all-in-one */}
+                <div className="p-4 rounded-xl bg-white/[0.04] border border-white/10 space-y-3">
+                  <div>
+                    <label className="text-xs font-extrabold text-foreground uppercase tracking-wider block">
+                      Assigned Capabilities & Service Scopes *
+                    </label>
+                    <span className="text-[11px] text-muted-foreground font-medium block mt-0.5 leading-tight">
+                      Check each matching service domain to make this provider dynamically visible under targeted event sub-tabs. Providers can overlap one, two, or all three services.
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-3 pt-1">
+                    {(["Vendor", "Hotel", "Travel"] as const).map(srvOpt => {
+                      const isSelected = newInviteForm.selectedServices.includes(srvOpt);
+                      const srvMeta = {
+                        Vendor: { clr: "border-amber-500/60 text-amber-500", desc: "Rigging & AV setup" },
+                        Hotel: { clr: "border-blue-500/60 text-blue-400", desc: "Room blocks API" },
+                        Travel: { clr: "border-purple-500/60 text-purple-400", desc: "Shuttles & flights" }
+                      };
+
+                      return (
+                        <button
+                          key={srvOpt}
+                          type="button"
+                          onClick={() => toggleServiceCapability(srvOpt)}
+                          className={cn(
+                            "p-3.5 rounded-xl border-2 text-left transition-all relative group overflow-hidden flex flex-col justify-between shadow-xs",
+                            isSelected 
+                              ? `bg-white/10 border-primary` 
+                              : "bg-background/80 border-border/80 hover:border-border text-muted-foreground"
+                          )}
+                        >
+                          <div>
+                            <div className="flex items-center justify-between gap-1 mb-1.5">
+                              <span className={cn("text-xs font-extrabold", isSelected ? "text-foreground" : "")}>
+                                {srvOpt}
+                              </span>
+                              <div className={cn("h-4 w-4 rounded-md border-2 grid place-items-center shrink-0 transition-colors", isSelected ? "bg-primary border-primary text-background" : "border-border bg-background")}>
+                                {isSelected && <Check className="h-3 w-3 stroke-[3]" />}
+                              </div>
+                            </div>
+                            <p className="text-[10px] text-muted-foreground line-clamp-2 leading-tight mt-1 font-medium">
+                              {srvMeta[srvOpt].desc}
+                            </p>
+                          </div>
+                          
+                          <span className={cn("text-[9px] font-mono font-extrabold block mt-3 pt-1.5 border-t border-border/40", isSelected ? srvMeta[srvOpt].clr : "text-transparent")}>
+                            Mapped
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="pt-2 flex items-center justify-between">
+                    <span className="text-xs font-extrabold text-muted-foreground block">
+                      Primary Ledger Heading Tag
+                    </span>
+                    <select
+                      value={newInviteForm.primaryType}
+                      onChange={e => setNewInviteForm(f => ({ ...f, primaryType: e.target.value as any }))}
+                      className="bg-background/95 border-2 border-border/80 rounded-xl py-1.5 px-3 text-xs font-bold text-foreground outline-none shadow-inner"
+                    >
+                      {newInviteForm.selectedServices.map(s => (
+                        <option key={s} value={s}>{s} Index Category</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Target Specific Event Binding Picker */}
+                <div className="p-4 rounded-xl bg-gradient-to-r from-primary/10 to-transparent border-2 border-primary/30 space-y-3">
+                  <div>
+                    <label className="text-xs font-extrabold text-primary uppercase tracking-wider block">
+                      Target Associated Timeline Mapping *
+                    </label>
+                    <span className="text-[11px] text-muted-foreground font-medium block mt-0.5 leading-tight">
+                      Bind this partner directly to any existing summit timeline. The invited contractor automatically shows up under that event's specific inner tabs.
+                    </span>
+                  </div>
+
+                  <select
+                    value={newInviteForm.targetEventId}
+                    onChange={e => setNewInviteForm(f => ({ ...f, targetEventId: e.target.value }))}
+                    className="w-full bg-background/95 border-2 border-border/80 rounded-xl py-2.5 px-3.5 text-xs font-extrabold text-foreground outline-none focus:border-primary transition-all cursor-pointer shadow-inner"
+                  >
+                    {events.map(ev => (
+                      <option key={ev.id} value={ev.id} className="bg-background text-foreground font-bold">
+                        📌 {ev.title} — {ev.city}, {ev.country} ({ev.date})
+                      </option>
+                    ))}
+                  </select>
+
+                  <div className="grid grid-cols-2 gap-3 pt-2 font-mono">
+                    <div>
+                      <span className="text-[10px] text-muted-foreground block font-sans font-extrabold uppercase tracking-wider">Commission Edge</span>
+                      <div className="flex items-center gap-1 mt-1">
+                        <input
+                          type="number"
+                          min="1"
+                          max="30"
+                          value={newInviteForm.commissionVal}
+                          onChange={e => setNewInviteForm(f => ({ ...f, commissionVal: e.target.value }))}
+                          className="w-16 bg-background/95 border-2 border-border/80 rounded-xl py-1 px-2 text-xs text-primary font-extrabold outline-none text-right shadow-inner"
+                        />
+                        <span className="text-xs text-muted-foreground font-extrabold">%</span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <span className="text-[10px] text-muted-foreground block font-sans font-extrabold uppercase tracking-wider">Coverage Geofence</span>
+                      <input
+                        type="text"
+                        value={newInviteForm.regionCover}
+                        onChange={e => setNewInviteForm(f => ({ ...f, regionCover: e.target.value }))}
+                        placeholder="e.g. EU Core Transit"
+                        className="w-full bg-background/95 border-2 border-border/80 rounded-xl py-1 px-2.5 text-xs text-foreground outline-none mt-1 truncate shadow-inner"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t border-white/10 flex items-center justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsInviteModalOpen(false)}
+                    className="px-4 py-2 rounded-xl text-xs font-extrabold text-muted-foreground hover:text-foreground transition-all"
+                  >
+                    Cancel Handshake
+                  </button>
+                  <GradientButton type="submit" size="sm" className="h-10 px-6 font-extrabold text-xs shadow-md">
+                    Dispatch Linked Handshake
+                  </GradientButton>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* ── OVERLAY: ASSIGN VENDOR AS STAGING CREW MODAL ── */}
       <AnimatePresence>
         {targetVendorForExecution && (
@@ -476,10 +822,10 @@ export default function OrganizerOperations() {
                   <select
                     value={targetAssignEventId}
                     onChange={(e) => setTargetAssignEventId(e.target.value)}
-                    className="w-full px-3 py-2 text-xs bg-accent/20 border border-border rounded-xl text-foreground font-medium outline-none focus:border-primary transition-all"
+                    className="w-full px-3 py-2 text-xs bg-accent/20 border border-border rounded-xl text-foreground font-medium outline-none focus:border-primary transition-all cursor-pointer"
                   >
                     {events.map(ev => (
-                      <option key={ev.id} value={ev.id}>
+                      <option key={ev.id} value={ev.id} className="bg-background text-foreground">
                         📌 {ev.title} ({ev.city})
                       </option>
                     ))}
@@ -511,7 +857,7 @@ export default function OrganizerOperations() {
         )}
       </AnimatePresence>
 
-      {/* ── OVERLAY: PREMIUM DETAILS MODAL ── */}
+      {/* ── OVERLAY: VIEW PROFILE MODAL ── */}
       <AnimatePresence>
          {selectedPartner && (
            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -530,13 +876,13 @@ export default function OrganizerOperations() {
               >
                  <div className="p-5 bg-accent/20 border-b border-border flex items-start justify-between gap-4">
                     <div className="flex items-center gap-3.5">
-                       <img src={selectedPartner.avatar} alt="" className="h-14 w-14 rounded-xl object-cover ring-1 ring-border" />
+                       <img src={selectedPartner.avatar} alt="" className="h-14 w-14 rounded-xl object-cover ring-1 ring-border bg-background" />
                        <div>
                           <div className="flex items-center gap-2 mb-0.5">
-                             <span className="px-2 py-0.2 rounded text-[9px] font-bold uppercase tracking-widest bg-primary text-white font-mono">
-                               {selectedPartner.type} Hub
+                             <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-widest bg-primary text-white font-mono">
+                               {selectedPartner.type} Partner
                              </span>
-                             <span className="text-[10px] font-bold text-emerald-500 font-mono">Comm. Index: {selectedPartner.commission}%</span>
+                             <span className="text-[10px] font-bold text-emerald-500 font-mono">Commission: {selectedPartner.commission}%</span>
                           </div>
                           <h2 className="text-base font-bold text-foreground tracking-tight">{selectedPartner.name}</h2>
                           <p className="text-xs text-muted-foreground font-medium">Coverage Area: {selectedPartner.region}</p>
@@ -550,20 +896,27 @@ export default function OrganizerOperations() {
                  <div className="p-5 overflow-y-auto space-y-4 flex-1 no-scrollbar text-xs">
                     <div className="p-4 rounded-xl bg-accent/10 border border-border/40 space-y-3">
                        <span className="text-[10px] font-bold uppercase tracking-wider text-primary block">
-                         Mapped Hall Timeline
+                         Assigned Event Details
                        </span>
                        <div className="grid grid-cols-2 gap-3 font-mono">
                           <div>
-                             <span className="text-[9px] text-muted-foreground block font-sans uppercase">Target Base</span>
+                             <span className="text-[9px] text-muted-foreground block font-sans uppercase">Event Name</span>
                              <span className="font-bold text-foreground">{getEventTitle(selectedPartner.eventId)}</span>
                           </div>
                           <div>
-                             <span className="text-[9px] text-muted-foreground block font-sans uppercase">Operational Handshake</span>
+                             <span className="text-[9px] text-muted-foreground block font-sans uppercase">Status</span>
                              <span className="font-bold text-emerald-500">{selectedPartner.status}</span>
                           </div>
                        </div>
 
-                       {selectedPartner.type === "Vendor" && (
+                       <div className="pt-2 border-t border-border/40">
+                          <span className="text-[9px] text-amber-500 font-bold uppercase tracking-wider block">Provided Service Provision</span>
+                          <span className="text-xs font-bold text-foreground block mt-0.5">
+                            {selectedPartner.providedService || "General Event Operations & Equipment"}
+                          </span>
+                       </div>
+
+                       {selectedPartner.services.includes("Vendor") && (
                          <div className="pt-2 border-t border-border/40 flex justify-end">
                            <GradientButton
                              onClick={() => {
@@ -573,7 +926,7 @@ export default function OrganizerOperations() {
                              size="sm"
                              className="text-[10px] h-7 px-3"
                            >
-                              Update Linked Scope
+                              Update Event Scope
                            </GradientButton>
                          </div>
                        )}
@@ -581,7 +934,7 @@ export default function OrganizerOperations() {
 
                     <div className="space-y-2">
                        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
-                         Corporate Verification Log
+                         Company Description / Notes
                        </span>
                        <p className="text-muted-foreground bg-accent/5 p-3 rounded-xl border border-border/40 leading-relaxed font-sans">
                           "{selectedPartner.bio}"
@@ -592,14 +945,14 @@ export default function OrganizerOperations() {
                        <div className="p-2.5 rounded-xl bg-background border border-border flex items-center gap-2">
                           <Mail className="h-3.5 w-3.5 text-primary shrink-0" />
                           <div className="min-w-0">
-                             <span className="text-[9px] text-muted-foreground block font-bold">Liaison Agent</span>
-                             <span className="text-[11px] font-medium text-foreground truncate block">{selectedPartner.repName.split(" ")[0]}</span>
+                             <span className="text-[9px] text-muted-foreground block font-bold">Contact Person</span>
+                             <span className="text-[11px] font-medium text-foreground truncate block">{selectedPartner.repName?.split(" ")[0] || "Coordinator"}</span>
                           </div>
                        </div>
                        <div className="p-2.5 rounded-xl bg-background border border-border flex items-center gap-2">
                           <Phone className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
                           <div className="min-w-0">
-                             <span className="text-[9px] text-muted-foreground block font-bold">Telecom Contact</span>
+                             <span className="text-[9px] text-muted-foreground block font-bold">Phone Number</span>
                              <span className="text-[11px] font-medium text-foreground truncate block">{selectedPartner.phone}</span>
                           </div>
                        </div>
@@ -608,13 +961,13 @@ export default function OrganizerOperations() {
 
                  <div className="p-4 border-t border-border bg-accent/20 flex items-center justify-between text-[10px]">
                     <span className="text-muted-foreground flex items-center gap-1">
-                       <ShieldCheck className="h-3 w-3 text-emerald-500" /> Gateway Agreement Synchronized
+                       <ShieldCheck className="h-3 w-3 text-emerald-500" /> Verified Partner Account
                     </span>
                     <button
                       onClick={() => setSelectedPartner(null)}
                       className="px-3 py-1 rounded-lg bg-background text-foreground font-bold hover:bg-accent border border-border"
                     >
-                       Dismiss
+                       Close
                     </button>
                  </div>
               </motion.div>

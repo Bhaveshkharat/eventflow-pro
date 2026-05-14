@@ -37,7 +37,8 @@ const roleNavGroups: Record<Role, NavGroup[]> = {
     {
       group: "Master",
       items: [
-        { to: "/organizer/roles-users", label: "Roles & Partners", icon: User, badge: "New" },
+        { to: "/organizer/roles", label: "Roles", icon: User, badge: "RBAC" },
+        { to: "/organizer/users", label: "Users", icon: Users },
       ]
     },
     {

@@ -5,7 +5,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   Check, ArrowRight, ArrowLeft, Calendar, 
   MapPin, Ticket, DollarSign, Image as ImageIcon, 
-  Settings, Users, ShieldCheck, Zap, Mic2, Layers
+  Settings, Users, ShieldCheck, Zap, Mic2, Layers,
+  Hotel, Plane, Truck, Plus, Trash2, Box, Sparkles, 
+  Building2, Mail, Phone, CheckCircle2, X
 } from "lucide-react";
 import { DashboardShell } from "@/components/layout/DashboardShell";
 import { GlassCard } from "@/components/ui-ext/GlassCard";
@@ -13,20 +15,57 @@ import { GradientButton } from "@/components/ui-ext/GradientButton";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-const steps = ["Basics", "Ticketing Tiers", "Permissions", "Media"];
+// Expanded explicit steps supporting highly visual mapping of Stalls & Partners
+const steps = ["Basics", "Ticketing Tiers", "Stalls Info", "Assign Partners", "Permissions", "Media"];
+
+type RoleKey = "vendor" | "hotel-agent" | "travel-agent";
+
+const PARTNER_ROLES_META: { key: RoleKey; label: string; icon: React.ElementType; color: string; bg: string; border: string }[] = [
+  { key: "hotel-agent",   label: "Hotel Partner",   icon: Hotel,  color: "text-blue-400",   bg: "bg-blue-500/10",   border: "border-blue-500/30" },
+  { key: "travel-agent",  label: "Travel Partner",  icon: Plane,  color: "text-purple-400", bg: "bg-purple-500/10", border: "border-purple-500/30" },
+  { key: "vendor",        label: "Vendor",          icon: Truck,  color: "text-amber-400",  bg: "bg-amber-500/10",  border: "border-amber-500/30" },
+];
+
+const getRoleMeta = (key: RoleKey) => PARTNER_ROLES_META.find(r => r.key === key) ?? PARTNER_ROLES_META[0];
 
 export default function NewEventWizard() {
   const [currentStep, setCurrentStep] = useState(0);
+  
+  // State extension containing explicit pricing metrics mapping, Stalls footprints, and Partner connections
   const [formData, setFormData] = useState({
     title: "", date: "", venue: "", city: "",
     currency: "USD", commission: "10",
     dynamicPricing: true,
-    // Explicit Tier Pricing Metrics mapping to Visitor Checkout Options
+    isMultiDay: false,
+    endDate: "",
+    schedule: [
+      {
+        day: 1,
+        title: "Day 1 Agenda",
+        tracks: [
+          { id: "tr-1", time: "09:00 AM", title: "Registration & Welcome", speaker: "Organizing Committee" },
+          { id: "tr-2", time: "10:30 AM", title: "Opening Keynote", speaker: "Guest Speaker" }
+        ]
+      }
+    ],
     pricingTiers: {
-      general: "150",
-      pro: "450",
-      vip: "899"
+      general: { price: "150", slots: "500" },
+      pro: { price: "450", slots: "200" },
+      vip: { price: "899", slots: "50" }
     },
+    // Options to create stalls info like four facing island or any and price accordingly
+    stallsInfo: [
+      { id: "st-1", type: "Four Facing Island", size: "30x30 ft", price: "6000", slots: "4", active: true, desc: "Premium central placement with absolute 360-degree visibility & quad open parameters." },
+      { id: "st-2", type: "Peninsula Prime", size: "20x20 ft", price: "4500", slots: "8", active: true, desc: "High-traffic junction priority access featuring three exposed operational boundaries." },
+      { id: "st-3", type: "Standard Inline Booth", size: "10x10 ft", price: "2500", slots: "20", active: true, desc: "Classic row display framework with included high-contrast backwall grid drops." }
+    ],
+    // Option to assign partner while creating event itself matching users & partner section
+    assignedPartners: [
+      { id: "u1", name: "Marcus Vance", email: "marcus@grandmarquise.com", company: "Grand Marquise Hotels", roles: ["hotel-agent"] as RoleKey[], selected: true },
+      { id: "u2", name: "Sarah Jenkins", email: "sarah@skytravel.io", company: "SkyTravel Logistics", roles: ["travel-agent", "vendor"] as RoleKey[], selected: true },
+      { id: "u3", name: "Hans Gruber", email: "hans@peakvisuals.de", company: "Peak Visual Rigging", roles: ["vendor"] as RoleKey[], selected: true },
+      { id: "u4", name: "Elena Rostova", email: "elena@globalstay.sg", company: "Global Stay Hotels", roles: ["hotel-agent", "travel-agent"] as RoleKey[], selected: false },
+    ],
     roles: {
       visitor: true,
       exhibitor: true,
@@ -35,28 +74,204 @@ export default function NewEventWizard() {
     }
   });
 
+  // Custom inline form fields for dynamic state additions
+  const [newStallType, setNewStallType]   = useState("");
+  const [newStallSize, setNewStallSize]   = useState("");
+  const [newStallPrice, setNewStallPrice] = useState("");
+  const [newStallSlots, setNewStallSlots] = useState("");
+
+  const [newPartnerName, setNewPartnerName]       = useState("");
+  const [newPartnerEmail, setNewPartnerEmail]     = useState("");
+  const [newPartnerCompany, setNewPartnerCompany] = useState("");
+  const [newPartnerRole, setNewPartnerRole]       = useState<RoleKey>("vendor");
+
+  // Success dispatch verification dialog overlay
+  const [showSuccessSummary, setShowSuccessSummary] = useState(false);
+  const [dispatchedPartners, setDispatchedPartners] = useState<any[]>([]);
+
   const nextStep = () => setCurrentStep(s => Math.min(s + 1, steps.length - 1));
   const prevStep = () => setCurrentStep(s => Math.max(s - 1, 0));
 
-  const handleFinish = () => {
-    toast.success("Event created successfully! Configured tiered pricing synced into system cache.");
-    setTimeout(() => window.location.href = "/organizer/events/techsummit-26", 1500);
-  };
-
-  const updateTierPrice = (key: "general" | "pro" | "vip", val: string) => {
+  const updateTierField = (key: "general" | "pro" | "vip", field: "price" | "slots", val: string) => {
     setFormData(prev => ({
       ...prev,
-      pricingTiers: { ...prev.pricingTiers, [key]: val }
+      pricingTiers: {
+        ...prev.pricingTiers,
+        [key]: { ...prev.pricingTiers[key], [field]: val }
+      }
     }));
+  };
+
+  // Stall pricing update triggers
+  const updateStallField = (id: string, field: "price" | "slots", val: string) => {
+    setFormData(prev => ({
+      ...prev,
+      stallsInfo: prev.stallsInfo.map(s => s.id === id ? { ...s, [field]: val } : s)
+    }));
+  };
+
+  const toggleStallActive = (id: string) => {
+    setFormData(prev => ({
+      ...prev,
+      stallsInfo: prev.stallsInfo.map(s => s.id === id ? { ...s, active: !s.active } : s)
+    }));
+    toast.info("Stall configuration status toggled.");
+  };
+
+  const handleAddCustomStall = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newStallType.trim()) return;
+    const newStallObj = {
+      id: `st-custom-${Date.now()}`,
+      type: newStallType,
+      size: newStallSize.trim() || "15x15 ft",
+      price: newStallPrice.trim() || "3200",
+      slots: newStallSlots.trim() || "5",
+      active: true,
+      desc: "Custom operational layout footprint established during startup initialization."
+    };
+    setFormData(prev => ({
+      ...prev,
+      stallsInfo: [...prev.stallsInfo, newStallObj]
+    }));
+    setNewStallType("");
+    setNewStallSize("");
+    setNewStallPrice("");
+    setNewStallSlots("");
+    toast.success("Custom exposition stall configured successfully!");
+  };
+
+  // Multi-day schedule management controllers
+  const addNewDayToSchedule = () => {
+    setFormData(prev => {
+      const nextDayNum = prev.schedule.length + 1;
+      return {
+        ...prev,
+        schedule: [
+          ...prev.schedule,
+          {
+            day: nextDayNum,
+            title: `Day ${nextDayNum} Agenda`,
+            tracks: [
+              { id: `tr-${Date.now()}-1`, time: "09:00 AM", title: "Morning Welcome & Briefing", speaker: "Host Committee" }
+            ]
+          }
+        ]
+      };
+    });
+    toast.success("Added new day to event schedule!");
+  };
+
+  const updateDayTitle = (dayIndex: number, newTitle: string) => {
+    setFormData(prev => ({
+      ...prev,
+      schedule: prev.schedule.map((sch, idx) => idx === dayIndex ? { ...sch, title: newTitle } : sch)
+    }));
+  };
+
+  const addTrackToDay = (dayIndex: number) => {
+    setFormData(prev => ({
+      ...prev,
+      schedule: prev.schedule.map((sch, idx) => {
+        if (idx !== dayIndex) return sch;
+        return {
+          ...sch,
+          tracks: [
+            ...sch.tracks,
+            { id: `tr-${Date.now()}-${Math.random()}`, time: "12:00 PM", title: "New Session Track", speaker: "Speaker Name" }
+          ]
+        };
+      })
+    }));
+  };
+
+  const updateTrackField = (dayIndex: number, trackId: string, field: "time" | "title" | "speaker", val: string) => {
+    setFormData(prev => ({
+      ...prev,
+      schedule: prev.schedule.map((sch, idx) => {
+        if (idx !== dayIndex) return sch;
+        return {
+          ...sch,
+          tracks: sch.tracks.map(tr => tr.id === trackId ? { ...tr, [field]: val } : tr)
+        };
+      })
+    }));
+  };
+
+  const deleteTrackFromDay = (dayIndex: number, trackId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      schedule: prev.schedule.map((sch, idx) => {
+        if (idx !== dayIndex) return sch;
+        return {
+          ...sch,
+          tracks: sch.tracks.filter(tr => tr.id !== trackId)
+        };
+      })
+    }));
+  };
+
+  const removeDayFromSchedule = (dayIndex: number) => {
+    setFormData(prev => ({
+      ...prev,
+      schedule: prev.schedule.filter((_, idx) => idx !== dayIndex).map((sch, i) => ({
+        ...sch,
+        day: i + 1,
+        title: sch.title.startsWith("Day ") ? `Day ${i + 1} Agenda` : sch.title
+      }))
+    }));
+    toast.info("Removed day from schedule.");
+  };
+
+  // Partner assignment controllers
+  const togglePartnerSelect = (id: string) => {
+    setFormData(prev => ({
+      ...prev,
+      assignedPartners: prev.assignedPartners.map(p => p.id === id ? { ...p, selected: !p.selected } : p)
+    }));
+  };
+
+  const handleAddCustomPartner = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPartnerName.trim() || !newPartnerEmail.trim()) return;
+    const newPartnerObj = {
+      id: `p-custom-${Date.now()}`,
+      name: newPartnerName,
+      email: newPartnerEmail,
+      company: newPartnerCompany.trim() || "Independent Vendor Ops",
+      roles: [newPartnerRole],
+      selected: true
+    };
+    setFormData(prev => ({
+      ...prev,
+      assignedPartners: [newPartnerObj, ...prev.assignedPartners]
+    }));
+    setNewPartnerName("");
+    setNewPartnerEmail("");
+    setNewPartnerCompany("");
+    toast.success(`Partner identity mapped & designated to active scoping ledger!`);
+  };
+
+  // Final confirmation action: computing auto invitations
+  const handlePublishSequence = () => {
+    const invitedList = formData.assignedPartners.filter(partner => partner.selected);
+
+    setDispatchedPartners(invitedList);
+    setShowSuccessSummary(true);
+    toast.success("Event published successfully!");
+  };
+
+  const handleFinalRedirect = () => {
+    window.location.href = "/organizer/events/techsummit-26";
   };
 
   return (
     <DashboardShell 
-      title="Launch New Event & Scope Pricing" 
-      subtitle="Define basic parameters, configure individual ticket prices for general/pro/vip visitor tiers, and establish multi-tenant constraints."
+      title="Create New Event" 
+      subtitle="Set up event details, configure ticket pricing, manage exhibition stalls, and assign trusted partners."
     >
       <div className="max-w-4xl mx-auto">
-        {/* Progress Bar */}
+        {/* Progress Navigation Tracker */}
         <div className="flex items-center justify-between mb-12 relative px-2">
            <div className="absolute top-1/2 left-0 w-full h-[2px] bg-border/60 -translate-y-1/2 z-0" />
            <div 
@@ -73,7 +288,7 @@ export default function NewEventWizard() {
                    {idx < currentStep ? <Check className="h-4 w-4 stroke-[3]" /> : <span className="text-xs">{idx + 1}</span>}
                 </div>
                 <span className={cn(
-                  "text-[10px] font-bold uppercase tracking-wider font-mono",
+                  "text-[10px] font-bold uppercase tracking-wider font-mono hidden sm:block text-center",
                   idx <= currentStep ? "text-primary" : "text-muted-foreground"
                 )}>
                   {label}
@@ -94,10 +309,13 @@ export default function NewEventWizard() {
             >
               {/* STEP 0: BASICS */}
               {currentStep === 0 && (
-                <div className="space-y-5">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block border-b border-border/40 pb-2">
-                    Spatial Identity Parameters
-                  </span>
+                <div className="space-y-6">
+                  <div className="border-b border-border/40 pb-2">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                      Event Details
+                    </span>
+                  </div>
+
                   <div className="grid gap-4 md:grid-cols-2">
                     <Field 
                       label="Event Title *" 
@@ -106,15 +324,38 @@ export default function NewEventWizard() {
                       placeholder="e.g. Future Tech Expo 2026" 
                     />
                     <Field 
-                      label="Target Sector Category" 
+                      label="Category" 
                       placeholder="Technology, Design, Healthcare..." 
                     />
                     <Field 
-                      label="Date & Time Framework" 
+                      label="Start Date & Time" 
                       type="datetime-local" 
                       value={formData.date}
                       onChange={(e: any) => setFormData(prev => ({ ...prev, date: e.target.value }))}
                     />
+                    {formData.isMultiDay ? (
+                      <Field 
+                        label="End Date & Time" 
+                        type="datetime-local" 
+                        value={formData.endDate}
+                        onChange={(e: any) => setFormData(prev => ({ ...prev, endDate: e.target.value }))}
+                      />
+                    ) : (
+                      <div className="flex flex-col justify-center pt-4">
+                        <label className="flex items-center gap-2 text-xs font-bold text-foreground cursor-pointer select-none w-fit">
+                          <input 
+                            type="checkbox" 
+                            checked={formData.isMultiDay}
+                            onChange={(e) => setFormData(prev => ({ ...prev, isMultiDay: e.target.checked }))}
+                            className="rounded border-border accent-primary h-4 w-4"
+                          />
+                          <span>Multi-Day Event Schedule</span>
+                        </label>
+                        <span className="text-[10px] text-muted-foreground block mt-0.5 ml-6">
+                          Enable to add an end date and manage schedules per day.
+                        </span>
+                      </div>
+                    )}
                     <Field 
                       label="Venue Name" 
                       value={formData.venue}
@@ -122,13 +363,127 @@ export default function NewEventWizard() {
                       placeholder="e.g. Moscone Center" 
                     />
                     <Field 
-                      label="City Zone" 
+                      label="City" 
                       value={formData.city}
                       onChange={(e: any) => setFormData(prev => ({ ...prev, city: e.target.value }))}
                       placeholder="e.g. San Francisco" 
-                      className="md:col-span-2" 
                     />
                   </div>
+
+                  {formData.isMultiDay && (
+                    <div className="pt-2 border-t border-border/40">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+                        <div>
+                          <label className="flex items-center gap-2 text-xs font-bold text-foreground cursor-pointer select-none w-fit">
+                            <input 
+                              type="checkbox" 
+                              checked={formData.isMultiDay}
+                              onChange={(e) => setFormData(prev => ({ ...prev, isMultiDay: e.target.checked }))}
+                              className="rounded border-border accent-primary h-4 w-4"
+                            />
+                            <span className="text-primary font-bold">Multi-Day Schedule Builder</span>
+                          </label>
+                          <p className="text-[10px] text-muted-foreground mt-0.5 ml-6">
+                            Write custom daily schedules and presentation tracks for your event.
+                          </p>
+                        </div>
+                        <GradientButton 
+                          type="button" 
+                          onClick={addNewDayToSchedule} 
+                          size="sm" 
+                          className="text-xs h-8 px-3 shrink-0 self-start sm:self-auto"
+                        >
+                          <Plus className="h-3.5 w-3.5 mr-1" /> Add Day
+                        </GradientButton>
+                      </div>
+
+                      <div className="space-y-4">
+                        {formData.schedule.map((dayObj, dIdx) => (
+                          <div key={dayObj.day} className="p-4 rounded-xl bg-accent/5 border border-border space-y-3">
+                            <div className="flex items-center justify-between gap-2 pb-2 border-b border-border/40">
+                              <div className="flex items-center gap-2 flex-1 min-w-0">
+                                <span className="px-2 py-0.5 rounded bg-primary text-white font-mono font-bold text-[10px] shrink-0">
+                                  Day {dayObj.day}
+                                </span>
+                                <input 
+                                  type="text"
+                                  value={dayObj.title}
+                                  onChange={(e) => updateDayTitle(dIdx, e.target.value)}
+                                  placeholder="Day Agenda Title"
+                                  className="bg-transparent border-none text-xs font-bold text-foreground outline-none focus:underline flex-1 min-w-0"
+                                />
+                              </div>
+
+                              <div className="flex items-center gap-1 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => addTrackToDay(dIdx)}
+                                  className="px-2 py-1 rounded bg-background border border-border text-[10px] font-bold text-foreground hover:border-primary transition-all flex items-center gap-1"
+                                >
+                                  <Plus className="h-3 w-3 text-primary" /> Add Track
+                                </button>
+                                {formData.schedule.length > 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => removeDayFromSchedule(dIdx)}
+                                    className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                                    title="Delete Day"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Tracks loop */}
+                            <div className="space-y-2 pt-1">
+                              {dayObj.tracks.map(tr => (
+                                <div key={tr.id} className="grid grid-cols-1 sm:grid-cols-12 gap-2 p-2 rounded-lg bg-background border border-border items-center text-xs">
+                                  <div className="sm:col-span-3">
+                                    <input 
+                                      type="text"
+                                      value={tr.time}
+                                      onChange={(e) => updateTrackField(dIdx, tr.id, "time", e.target.value)}
+                                      placeholder="Time (e.g. 09:00 AM)"
+                                      className="w-full bg-transparent border-none text-xs font-mono font-bold outline-none text-muted-foreground focus:text-foreground"
+                                    />
+                                  </div>
+                                  <div className="sm:col-span-5">
+                                    <input 
+                                      type="text"
+                                      value={tr.title}
+                                      onChange={(e) => updateTrackField(dIdx, tr.id, "title", e.target.value)}
+                                      placeholder="Session Title"
+                                      className="w-full bg-transparent border-none text-xs font-bold text-foreground outline-none"
+                                    />
+                                  </div>
+                                  <div className="sm:col-span-3">
+                                    <input 
+                                      type="text"
+                                      value={tr.speaker}
+                                      onChange={(e) => updateTrackField(dIdx, tr.id, "speaker", e.target.value)}
+                                      placeholder="Speaker / Info"
+                                      className="w-full bg-transparent border-none text-[11px] text-muted-foreground outline-none"
+                                    />
+                                  </div>
+                                  <div className="sm:col-span-1 text-right">
+                                    <button
+                                      type="button"
+                                      onClick={() => deleteTrackFromDay(dIdx, tr.id)}
+                                      className="p-1 text-muted-foreground hover:text-destructive transition-colors"
+                                      title="Remove Track"
+                                    >
+                                      <X className="h-3.5 w-3.5 inline" />
+                                    </button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -137,10 +492,10 @@ export default function NewEventWizard() {
                 <div className="space-y-6">
                   <div className="border-b border-border/40 pb-3">
                     <span className="text-xs font-bold text-foreground uppercase tracking-wider block flex items-center gap-2">
-                      <Ticket className="h-4 w-4 text-primary" /> Pass Authorization Pricing Matrix
+                      <Ticket className="h-4 w-4 text-primary" /> Ticket Pricing
                     </span>
                     <p className="text-[11px] text-muted-foreground mt-0.5">
-                      Define upfront ticket rates for custom access structures. These prices map immediately onto public Visitor Checkout gateways.
+                      Configure ticket pricing tiers for your event attendees.
                     </p>
                   </div>
 
@@ -151,19 +506,32 @@ export default function NewEventWizard() {
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-accent text-foreground font-mono uppercase tracking-wider block w-fit mb-1">
                           Standard Access
                         </span>
-                        <h4 className="text-xs font-bold text-foreground">General Attendee Pass Price</h4>
-                        <p className="text-[10px] text-muted-foreground mt-0.5">Basic expo floor exploration and standard presentation row viewing.</p>
+                        <h4 className="text-xs font-bold text-foreground">General Attendee Pass</h4>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">Basic event entry and standard seating.</p>
                       </div>
 
-                      <div className="relative w-full sm:w-36 shrink-0">
-                        <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                        <input 
-                          type="number" 
-                          value={formData.pricingTiers.general}
-                          onChange={(e) => updateTierPrice("general", e.target.value)}
-                          placeholder="150"
-                          className="w-full pl-8 pr-3 py-2 text-xs bg-accent/10 border border-border rounded-xl text-foreground font-mono font-bold outline-none focus:border-primary transition-all"
-                        />
+                      <div className="flex items-center gap-2 w-full sm:w-auto shrink-0 pt-2 sm:pt-0">
+                        <div className="relative w-full sm:w-28">
+                          <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                          <input 
+                            type="number" 
+                            value={formData.pricingTiers.general.price}
+                            onChange={(e) => updateTierField("general", "price", e.target.value)}
+                            placeholder="Price"
+                            className="w-full pl-7 pr-2 py-2 text-xs bg-accent/10 border border-border rounded-xl text-foreground font-mono font-bold outline-none focus:border-primary transition-all"
+                          />
+                          <span className="absolute -top-2 left-2 text-[8px] px-1 bg-background text-muted-foreground font-mono">Price</span>
+                        </div>
+                        <div className="relative w-full sm:w-24">
+                          <input 
+                            type="number" 
+                            value={formData.pricingTiers.general.slots}
+                            onChange={(e) => updateTierField("general", "slots", e.target.value)}
+                            placeholder="Slots"
+                            className="w-full px-2.5 py-2 text-xs bg-accent/10 border border-border rounded-xl text-foreground font-mono font-bold outline-none focus:border-primary transition-all text-center"
+                          />
+                          <span className="absolute -top-2 left-2 text-[8px] px-1 bg-background text-muted-foreground font-mono">Slots</span>
+                        </div>
                       </div>
                     </div>
 
@@ -173,19 +541,32 @@ export default function NewEventWizard() {
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 font-mono uppercase tracking-wider block w-fit mb-1">
                           Popular Upgrade
                         </span>
-                        <h4 className="text-xs font-bold text-foreground">Pro Access Delegate Price</h4>
-                        <p className="text-[10px] text-muted-foreground mt-0.5">Fast-track turnstile priorities and delegate mixer session entries.</p>
+                        <h4 className="text-xs font-bold text-foreground">Pro Pass</h4>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">Priority entry and access to networking sessions.</p>
                       </div>
 
-                      <div className="relative w-full sm:w-36 shrink-0">
-                        <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                        <input 
-                          type="number" 
-                          value={formData.pricingTiers.pro}
-                          onChange={(e) => updateTierPrice("pro", e.target.value)}
-                          placeholder="450"
-                          className="w-full pl-8 pr-3 py-2 text-xs bg-accent/10 border border-border rounded-xl text-foreground font-mono font-bold outline-none focus:border-primary transition-all"
-                        />
+                      <div className="flex items-center gap-2 w-full sm:w-auto shrink-0 pt-2 sm:pt-0">
+                        <div className="relative w-full sm:w-28">
+                          <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                          <input 
+                            type="number" 
+                            value={formData.pricingTiers.pro.price}
+                            onChange={(e) => updateTierField("pro", "price", e.target.value)}
+                            placeholder="Price"
+                            className="w-full pl-7 pr-2 py-2 text-xs bg-accent/10 border border-border rounded-xl text-foreground font-mono font-bold outline-none focus:border-primary transition-all"
+                          />
+                          <span className="absolute -top-2 left-2 text-[8px] px-1 bg-background text-muted-foreground font-mono">Price</span>
+                        </div>
+                        <div className="relative w-full sm:w-24">
+                          <input 
+                            type="number" 
+                            value={formData.pricingTiers.pro.slots}
+                            onChange={(e) => updateTierField("pro", "slots", e.target.value)}
+                            placeholder="Slots"
+                            className="w-full px-2.5 py-2 text-xs bg-accent/10 border border-border rounded-xl text-foreground font-mono font-bold outline-none focus:border-primary transition-all text-center"
+                          />
+                          <span className="absolute -top-2 left-2 text-[8px] px-1 bg-background text-muted-foreground font-mono">Slots</span>
+                        </div>
                       </div>
                     </div>
 
@@ -195,19 +576,32 @@ export default function NewEventWizard() {
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-purple-500/10 text-purple-500 border border-purple-500/20 font-mono uppercase tracking-wider block w-fit mb-1">
                           All-Inclusive Pass
                         </span>
-                        <h4 className="text-xs font-bold text-foreground">VIP Executive Track Price</h4>
-                        <p className="text-[10px] text-muted-foreground mt-0.5">Sovereign 1-on-1 speaker handshakes, green-room entry, and auto hotel block linking.</p>
+                        <h4 className="text-xs font-bold text-foreground">VIP Pass</h4>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">Full access including backstage, speaker meetups, and VIP lounge.</p>
                       </div>
 
-                      <div className="relative w-full sm:w-36 shrink-0">
-                        <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                        <input 
-                          type="number" 
-                          value={formData.pricingTiers.vip}
-                          onChange={(e) => updateTierPrice("vip", e.target.value)}
-                          placeholder="899"
-                          className="w-full pl-8 pr-3 py-2 text-xs bg-accent/10 border border-border rounded-xl text-foreground font-mono font-bold outline-none focus:border-primary transition-all"
-                        />
+                      <div className="flex items-center gap-2 w-full sm:w-auto shrink-0 pt-2 sm:pt-0">
+                        <div className="relative w-full sm:w-28">
+                          <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                          <input 
+                            type="number" 
+                            value={formData.pricingTiers.vip.price}
+                            onChange={(e) => updateTierField("vip", "price", e.target.value)}
+                            placeholder="Price"
+                            className="w-full pl-7 pr-2 py-2 text-xs bg-accent/10 border border-border rounded-xl text-foreground font-mono font-bold outline-none focus:border-primary transition-all"
+                          />
+                          <span className="absolute -top-2 left-2 text-[8px] px-1 bg-background text-muted-foreground font-mono">Price</span>
+                        </div>
+                        <div className="relative w-full sm:w-24">
+                          <input 
+                            type="number" 
+                            value={formData.pricingTiers.vip.slots}
+                            onChange={(e) => updateTierField("vip", "slots", e.target.value)}
+                            placeholder="Slots"
+                            className="w-full px-2.5 py-2 text-xs bg-accent/10 border border-border rounded-xl text-foreground font-mono font-bold outline-none focus:border-primary transition-all text-center"
+                          />
+                          <span className="absolute -top-2 left-2 text-[8px] px-1 bg-background text-muted-foreground font-mono">Slots</span>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -215,7 +609,7 @@ export default function NewEventWizard() {
                   {/* Supplementary settings */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
                     <Field 
-                      label="Partner Commission Pool (%)" 
+                      label="Partner Commission (%)" 
                       type="number" 
                       value={formData.commission}
                       onChange={(e: any) => setFormData(prev => ({ ...prev, commission: e.target.value }))}
@@ -223,7 +617,7 @@ export default function NewEventWizard() {
                       icon={ShieldCheck} 
                     />
                     <div>
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block mb-1">Currency Code</label>
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block mb-1">Currency</label>
                       <select 
                         value={formData.currency} 
                         onChange={(e) => setFormData(prev => ({ ...prev, currency: e.target.value }))}
@@ -240,8 +634,8 @@ export default function NewEventWizard() {
                     <div className="flex items-center gap-2.5">
                       <Zap className="h-4 w-4 text-primary shrink-0" />
                       <div className="min-w-0">
-                        <h4 className="text-xs font-bold text-foreground">Dynamic Multi-Tenant Scoping</h4>
-                        <p className="text-[10px] text-muted-foreground mt-0.5">Prices dynamically scale based on active remaining tier inventory caps.</p>
+                        <h4 className="text-xs font-bold text-foreground">Dynamic Pricing</h4>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">Automatically adjust ticket prices based on remaining availability.</p>
                       </div>
                     </div>
                     <span className="text-[9px] font-bold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded shrink-0 font-mono">
@@ -251,8 +645,254 @@ export default function NewEventWizard() {
                 </div>
               )}
 
-              {/* STEP 2: PERMISSIONS */}
+              {/* STEP 2: STALLS INFO CONFIGURATION */}
               {currentStep === 2 && (
+                <div className="space-y-6">
+                  <div className="border-b border-border/40 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <span className="text-xs font-bold text-foreground uppercase tracking-wider block flex items-center gap-2">
+                        <Box className="h-4 w-4 text-primary" /> Exhibition Stalls
+                      </span>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        Configure booth types, dimensions, and pricing for exhibitors.
+                      </p>
+                    </div>
+                    <span className="px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 text-[10px] font-mono font-bold self-start sm:self-auto">
+                      Dynamic Booth Pricing
+                    </span>
+                  </div>
+
+                  <div className="space-y-3">
+                    {formData.stallsInfo.map(stall => (
+                      <div 
+                        key={stall.id} 
+                        className={cn(
+                          "p-4 rounded-xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative overflow-hidden",
+                          stall.active ? "bg-background border-border hover:border-primary/40" : "bg-background/40 border-border/40 opacity-60"
+                        )}
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-xs font-black text-foreground tracking-tight">{stall.type}</span>
+                            <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-accent text-foreground">
+                              {stall.size}
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-muted-foreground line-clamp-2 leading-relaxed">{stall.desc}</p>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto pt-2 sm:pt-0">
+                          <div className="relative w-24">
+                            <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                            <input 
+                              type="number"
+                              disabled={!stall.active}
+                              value={stall.price}
+                              onChange={(e) => updateStallField(stall.id, "price", e.target.value)}
+                              placeholder="Price"
+                              className="w-full pl-6 pr-1 py-1.5 text-xs bg-accent/10 border border-border rounded-lg text-foreground font-mono font-bold outline-none focus:border-primary transition-all disabled:opacity-50"
+                            />
+                            <span className="absolute -top-2 left-2 text-[8px] px-1 bg-background text-muted-foreground font-mono">Price</span>
+                          </div>
+
+                          <div className="relative w-20">
+                            <input 
+                              type="number"
+                              disabled={!stall.active}
+                              value={stall.slots || ""}
+                              onChange={(e) => updateStallField(stall.id, "slots", e.target.value)}
+                              placeholder="Slots"
+                              className="w-full px-2 py-1.5 text-xs bg-accent/10 border border-border rounded-lg text-foreground font-mono font-bold outline-none focus:border-primary transition-all text-center disabled:opacity-50"
+                            />
+                            <span className="absolute -top-2 left-2 text-[8px] px-1 bg-background text-muted-foreground font-mono">Slots</span>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => toggleStallActive(stall.id)}
+                            className={cn(
+                              "px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider font-mono border transition-all shrink-0 ml-1",
+                              stall.active ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : "bg-accent text-muted-foreground border-border"
+                            )}
+                          >
+                            {stall.active ? "Enabled" : "Disabled"}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Inline creation widget for custom stall types */}
+                  <form onSubmit={handleAddCustomStall} className="p-4 rounded-xl glass border border-border/60 space-y-3 bg-accent/5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block flex items-center gap-1.5">
+                      <Sparkles className="h-3 w-3 text-primary" /> Add Custom Booth Type
+                    </span>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
+                      <input 
+                        type="text" 
+                        value={newStallType}
+                        onChange={(e) => setNewStallType(e.target.value)}
+                        placeholder="Type (e.g. Center Octagon)" 
+                        className="px-3 py-2 text-xs bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground outline-none focus:border-primary transition-all font-medium"
+                      />
+                      <input 
+                        type="text" 
+                        value={newStallSize}
+                        onChange={(e) => setNewStallSize(e.target.value)}
+                        placeholder="Dimensions (e.g. 40x40 ft)" 
+                        className="px-3 py-2 text-xs bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground outline-none focus:border-primary transition-all font-medium"
+                      />
+                      <div className="relative">
+                        <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                        <input 
+                          type="number" 
+                          value={newStallPrice}
+                          onChange={(e) => setNewStallPrice(e.target.value)}
+                          placeholder="Price" 
+                          className="w-full pl-7 pr-2 py-2 text-xs bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground outline-none focus:border-primary transition-all font-mono font-bold"
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <input 
+                          type="number" 
+                          value={newStallSlots}
+                          onChange={(e) => setNewStallSlots(e.target.value)}
+                          placeholder="Slots count" 
+                          className="w-full px-3 py-2 text-xs bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground outline-none focus:border-primary transition-all font-mono font-bold text-center"
+                        />
+                        <GradientButton type="submit" size="sm" className="h-9 px-3 shrink-0 shadow-sm text-xs">
+                          <Plus className="h-4 w-4" />
+                        </GradientButton>
+                      </div>
+                    </div>
+                  </form>
+                </div>
+              )}
+
+              {/* STEP 3: ASSIGN PARTNERS INLINE */}
+              {currentStep === 3 && (
+                <div className="space-y-6">
+                  <div className="border-b border-border/40 pb-3">
+                    <span className="text-xs font-bold text-foreground uppercase tracking-wider block flex items-center gap-2">
+                      <Building2 className="h-4 w-4 text-primary" /> Assign Partners
+                    </span>
+                    <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
+                      Select external partners (vendors, travel, and hotel providers) for this event. 
+                      Invitations will be sent automatically when published.
+                    </p>
+                  </div>
+
+                  {/* Scroller array containing state assignments */}
+                  <div className="space-y-2 max-h-72 overflow-y-auto pr-1 no-scrollbar">
+                    {formData.assignedPartners.map(partner => (
+                      <div 
+                        key={partner.id} 
+                        onClick={() => togglePartnerSelect(partner.id)}
+                        className={cn(
+                          "p-3 rounded-xl glass border flex items-center justify-between gap-3 cursor-pointer transition-all group",
+                          partner.selected ? "border-primary bg-primary/[0.03]" : "border-border/40 hover:border-border/80 bg-background/50"
+                        )}
+                      >
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <div className={cn(
+                            "h-4 w-4 rounded-md border flex items-center justify-center shrink-0 transition-colors",
+                            partner.selected ? "bg-primary border-primary text-background shadow-glow-xs" : "border-border/60 bg-background"
+                          )}>
+                            {partner.selected && <Check className="h-2.5 w-2.5 stroke-[3]" />}
+                          </div>
+
+                          <div className="h-8 w-8 rounded-lg gradient-bg text-white font-black text-xs grid place-items-center shrink-0">
+                            {partner.name.charAt(0)}
+                          </div>
+
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <p className={cn("text-xs font-bold truncate", partner.selected ? "text-foreground" : "text-muted-foreground group-hover:text-foreground")}>
+                                {partner.name}
+                              </p>
+                              <span className="text-[10px] text-muted-foreground truncate hidden sm:inline">· {partner.company}</span>
+                            </div>
+                            <p className="text-[10px] text-muted-foreground truncate">{partner.email}</p>
+                          </div>
+                        </div>
+
+                        {/* Rendering mapped multi-select role tags */}
+                        <div className="flex items-center gap-1 shrink-0">
+                          {partner.roles.map(rk => {
+                            const rMeta = getRoleMeta(rk);
+                            return (
+                              <span 
+                                key={rk}
+                                className={cn(
+                                  "flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-bold border font-mono",
+                                  rMeta.bg, rMeta.color, rMeta.border
+                                )}
+                              >
+                                <rMeta.icon className="h-2.5 w-2.5 shrink-0" />
+                                <span className="hidden sm:inline">{rMeta.label}</span>
+                              </span>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Provision Inline Contact Entity Form */}
+                  <form onSubmit={handleAddCustomPartner} className="p-4 rounded-xl bg-background border border-border space-y-3">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                      Invite New Partner
+                    </span>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <input 
+                        type="text" 
+                        value={newPartnerName}
+                        onChange={(e) => setNewPartnerName(e.target.value)}
+                        placeholder="Partner Contact Name *" 
+                        className="px-3 py-1.5 text-xs bg-accent/10 border border-border rounded-lg text-foreground placeholder:text-muted-foreground outline-none focus:border-primary transition-all font-medium"
+                      />
+                      <input 
+                        type="email" 
+                        value={newPartnerEmail}
+                        onChange={(e) => setNewPartnerEmail(e.target.value)}
+                        placeholder="Email Address *" 
+                        className="px-3 py-1.5 text-xs bg-accent/10 border border-border rounded-lg text-foreground placeholder:text-muted-foreground outline-none focus:border-primary transition-all font-medium"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                      <input 
+                        type="text" 
+                        value={newPartnerCompany}
+                        onChange={(e) => setNewPartnerCompany(e.target.value)}
+                        placeholder="Company Brand..." 
+                        className="sm:col-span-2 px-3 py-1.5 text-xs bg-accent/10 border border-border rounded-lg text-foreground placeholder:text-muted-foreground outline-none focus:border-primary transition-all font-medium"
+                      />
+                      <div className="flex gap-2">
+                        <select
+                          value={newPartnerRole}
+                          onChange={(e) => setNewPartnerRole(e.target.value as RoleKey)}
+                          className="flex-1 px-2 py-1.5 text-xs bg-accent/10 border border-border rounded-lg text-foreground font-bold outline-none focus:border-primary transition-all"
+                        >
+                          {PARTNER_ROLES_META.map(r => (
+                            <option key={r.key} value={r.key} className="bg-background text-foreground">
+                              {r.label}
+                            </option>
+                          ))}
+                        </select>
+                        <GradientButton type="submit" size="sm" className="h-8 px-3 shrink-0 text-xs">
+                          Add Partner
+                        </GradientButton>
+                      </div>
+                    </div>
+                  </form>
+                </div>
+              )}
+
+              {/* STEP 4: PERMISSIONS */}
+              {currentStep === 4 && (
                 <div className="space-y-5">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block border-b border-border/40 pb-2">
                     Attendee Role Authorizations
@@ -266,8 +906,8 @@ export default function NewEventWizard() {
                 </div>
               )}
 
-              {/* STEP 3: MEDIA */}
-              {currentStep === 3 && (
+              {/* STEP 5: MEDIA */}
+              {currentStep === 5 && (
                 <div className="space-y-6">
                   <div className="h-56 rounded-2xl border border-dashed border-border flex flex-col items-center justify-center gap-3 bg-accent/5 hover:bg-accent/10 transition-colors cursor-pointer group">
                      <div className="h-12 w-12 rounded-xl glass grid place-items-center text-muted-foreground group-hover:text-primary transition-colors">
@@ -305,13 +945,214 @@ export default function NewEventWizard() {
                  Next Stage
               </GradientButton>
             ) : (
-              <GradientButton onClick={handleFinish} size="sm" className="h-9 px-6 text-xs">
+              <GradientButton onClick={handlePublishSequence} size="sm" className="h-9 px-6 text-xs shadow-glow">
                  Publish Configured Summit
               </GradientButton>
             )}
           </div>
         </GlassCard>
       </div>
+
+      {/* RICH VISUAL CONFIRMATION DIALOG OVERLAY (Aesthetics WOW demonstration) */}
+      <AnimatePresence>
+        {showSuccessSummary && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-neutral-950/85 backdrop-blur-md" 
+            />
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="relative w-full max-w-xl bg-neutral-900 border border-white/20 rounded-2xl shadow-2xl z-10 overflow-hidden flex flex-col max-h-[90vh]"
+            >
+              {/* Splendid Title Bar */}
+              <div className="p-6 pb-4 bg-gradient-to-r from-emerald-500/10 via-primary/10 to-transparent border-b border-white/10 flex items-start justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-emerald-500 text-white grid place-items-center shrink-0 shadow-glow-sm">
+                    <CheckCircle2 className="h-5 w-5 stroke-[2.5]" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400 block">Success</span>
+                    <h2 className="text-base font-bold text-white">Event Created Successfully</h2>
+                  </div>
+                </div>
+                
+                <button 
+                  onClick={handleFinalRedirect}
+                  className="h-8 w-8 rounded-lg glass grid place-items-center text-muted-foreground hover:text-white transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              {/* Data Review Deck */}
+              <div className="p-6 overflow-y-auto space-y-5 flex-1 no-scrollbar">
+                {/* 1. Basic Metadata */}
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block mb-1">
+                    Event Details
+                  </span>
+                  <div className="p-3 rounded-xl bg-white/5 border border-white/10 text-xs space-y-2">
+                    <div>
+                      <p className="font-bold text-white text-sm">{formData.title || "Future Tech Expo 2026"}</p>
+                      <p className="text-muted-foreground mt-0.5">{formData.venue || "Moscone Center"} · {formData.city || "San Francisco"}</p>
+                    </div>
+
+                    {formData.date && (
+                      <div className="pt-2 border-t border-white/5 flex items-center justify-between text-[11px]">
+                        <span className="text-muted-foreground">Timeline:</span>
+                        <span className="font-mono text-emerald-400 font-medium">
+                          {formData.date} {formData.isMultiDay && formData.endDate ? `to ${formData.endDate}` : ""}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Event Schedule Deck */}
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block mb-1">
+                    {formData.isMultiDay ? "Multi-Day Agenda" : "Event Schedule"}
+                  </span>
+                  <div className="space-y-2">
+                    {formData.schedule.map((sch) => (
+                      <div key={sch.day} className="p-2.5 rounded-lg bg-white/5 border border-white/10 text-xs">
+                        <div className="flex items-center justify-between border-b border-white/5 pb-1.5 mb-1.5">
+                          <span className="font-bold text-emerald-400 text-[11px]">Day {sch.day}: {sch.title || `Day ${sch.day} Schedule`}</span>
+                          <span className="text-[9px] font-mono text-muted-foreground">{sch.tracks.length} sessions</span>
+                        </div>
+                        <div className="space-y-1.5">
+                          {sch.tracks.map((tr) => (
+                            <div key={tr.id} className="flex items-start justify-between gap-2 text-[11px]">
+                              <div className="min-w-0">
+                                <span className="font-medium text-white block truncate">{tr.title}</span>
+                                <span className="text-[10px] text-muted-foreground truncate block">by {tr.speaker}</span>
+                              </div>
+                              <span className="font-mono text-[10px] text-primary/80 shrink-0 mt-0.5">{tr.time}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 2. Configured Ticket Tier Subsystem */}
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block mb-1">
+                    Ticket Pricing Tiers
+                  </span>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="p-2 rounded-lg bg-white/5 border border-white/10 text-center">
+                      <span className="text-[9px] text-muted-foreground block font-bold uppercase">General</span>
+                      <span className="font-mono font-bold text-white text-xs block">${formData.pricingTiers.general.price}</span>
+                      <span className="text-[9px] text-muted-foreground font-mono block mt-0.5">{formData.pricingTiers.general.slots} slots</span>
+                    </div>
+                    <div className="p-2 rounded-lg bg-primary/10 border border-primary/20 text-center">
+                      <span className="text-[9px] text-primary block font-bold uppercase">Pro Tier</span>
+                      <span className="font-mono font-bold text-white text-xs block">${formData.pricingTiers.pro.price}</span>
+                      <span className="text-[9px] text-primary/70 font-mono block mt-0.5">{formData.pricingTiers.pro.slots} slots</span>
+                    </div>
+                    <div className="p-2 rounded-lg bg-purple-500/10 border border-purple-500/20 text-center">
+                      <span className="text-[9px] text-purple-400 block font-bold uppercase">VIP Pass</span>
+                      <span className="font-mono font-bold text-white text-xs block">${formData.pricingTiers.vip.price}</span>
+                      <span className="text-[9px] text-purple-400/70 font-mono block mt-0.5">{formData.pricingTiers.vip.slots} slots</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. Configured Stalls Information */}
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block mb-1">
+                    Exhibition Stalls
+                  </span>
+                  <div className="space-y-1.5">
+                    {formData.stallsInfo.filter(s => s.active).map(st => (
+                      <div key={st.id} className="p-2 rounded-lg bg-white/5 border border-white/10 flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-white">{st.type}</span>
+                          <span className="text-[9px] text-muted-foreground font-mono">({st.size})</span>
+                        </div>
+                        <div className="text-right">
+                          <span className="font-mono font-bold text-emerald-400 block">${st.price}</span>
+                          <span className="text-[9px] text-muted-foreground font-mono block">{st.slots} slots</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 4. Dispatched Invitations Queue */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                      Partner Invitations Sent
+                    </span>
+                    <span className="px-1.5 py-0.2 rounded text-[9px] font-bold font-mono bg-emerald-500/20 text-emerald-400">
+                      Dispatched: {dispatchedPartners.length}
+                    </span>
+                  </div>
+                  
+                  <p className="text-[11px] text-muted-foreground mb-2 leading-tight">
+                    Invitations sent automatically to selected operational vendors and travel partners.
+                  </p>
+
+                  <div className="space-y-1.5">
+                    {dispatchedPartners.length === 0 ? (
+                      <div className="p-4 rounded-lg bg-white/5 border border-white/10 text-center text-xs text-muted-foreground">
+                        No operational partners selected for automatic invitations.
+                      </div>
+                    ) : (
+                      dispatchedPartners.map(dp => (
+                        <div key={dp.id} className="p-2.5 rounded-lg bg-white/5 border border-white/10 flex items-center justify-between gap-3 text-xs">
+                          <div className="min-w-0 flex-1">
+                            <p className="font-bold text-white truncate flex items-center gap-1.5">
+                              <span>{dp.name}</span>
+                              <span className="text-[10px] text-muted-foreground font-normal">({dp.company})</span>
+                            </p>
+                            <p className="text-[10px] text-muted-foreground truncate">{dp.email}</p>
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            {dp.roles.map((rk: RoleKey) => {
+                              const rMeta = getRoleMeta(rk);
+                              return (
+                                <span key={rk} className={cn("px-1.5 py-0.2 rounded text-[9px] font-bold font-mono", rMeta.bg, rMeta.color)}>
+                                  {rMeta.label}
+                                </span>
+                              );
+                            })}
+                            <span className="h-4 w-4 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0" title="Sent verification check">
+                              <Check className="h-2.5 w-2.5 stroke-[3]" />
+                            </span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Handshake Close Bar */}
+              <div className="p-4 bg-white/5 border-t border-white/10 flex items-center justify-between">
+                <span className="text-[10px] text-muted-foreground font-mono flex items-center gap-1">
+                  <ShieldCheck className="h-3 w-3 text-emerald-400" /> Ready for Operations
+                </span>
+
+                <GradientButton onClick={handleFinalRedirect} size="sm" className="h-9 px-5 text-xs shadow-glow">
+                  Go to Event Dashboard
+                </GradientButton>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </DashboardShell>
   );
 }
