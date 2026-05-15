@@ -1,12 +1,12 @@
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { 
   LayoutDashboard, Ticket, Users, Building2, Hotel, BarChart3, 
   ScanLine, Bell, Settings, Sparkles, Menu, X, Search, 
   Mic2, Briefcase, ShieldCheck, Truck, Plane, Calendar, DollarSign, FileText,
-  ChevronLeft, ChevronRight, LogOut, HelpCircle, User
+  ChevronLeft, ChevronRight, LogOut, HelpCircle, User, Layers, PackageCheck
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { ThemeToggle } from "./ThemeToggle";
 import { useRole } from "@/hooks/useRole";
 import { motion, AnimatePresence } from "framer-motion";
@@ -68,37 +68,65 @@ const roleNavGroups: Record<Role, NavGroup[]> = {
       group: "My Account",
       items: [
         { to: "/visitor", label: "My Bookings", icon: Ticket },
+        { to: "/hotels-travel-catalog", label: "Hotels & Travel", icon: Hotel, badge: "New" },
         { to: "/notifications", label: "Updates", icon: Bell, badge: "3" },
         { to: "/settings", label: "Profile Settings", icon: Settings },
       ]
     }
   ],
   // Fallbacks for other roles (simplified for now)
-  exhibitor: [{ group: "Main", items: [{ to: "/exhibitor", label: "Booth Mgmt", icon: Building2 }, { to: "/analytics", label: "Leads", icon: BarChart3 }] }],
-  delegate: [{ group: "Main", items: [{ to: "/delegate", label: "Passes", icon: ShieldCheck }] }],
+  exhibitor: [
+    {
+      group: "Execution",
+      items: [
+        { to: "/exhibitor", label: "Dashboard", icon: LayoutDashboard },
+        { to: "/exhibitor/booth", label: "Booth Management", icon: Building2 },
+        { to: "/exhibitor/leads", label: "Smart Lead Capture", icon: ScanLine, badge: "Lens" },
+      ]
+    },
+    {
+      group: "Logistics",
+      items: [
+        { to: "/exhibitor/bookings", label: "My Bookings", icon: PackageCheck },
+        { to: "/exhibitor/billing", label: "Invoices & Settlements", icon: DollarSign },
+      ]
+    }
+  ],
+  delegate: [{ group: "Main", items: [{ to: "/delegate", label: "Passes", icon: ShieldCheck }, { to: "/hotels-travel-catalog", label: "Hotels & Travel", icon: Hotel }] }],
   speaker: [
     { 
       group: "Operations", 
       items: [
         { to: "/speaker", label: "Speaker Hub", icon: Mic2 },
-        { to: "/speaker/sessions", label: "My Sessions", icon: Calendar, badge: "Full Details" }
+        { to: "/speaker/sessions", label: "My Sessions", icon: Calendar, badge: "Full Details" },
+        { to: "/hotels-travel-catalog", label: "Hotels & Travel", icon: Hotel }
       ] 
     }
   ],
-  "hotel-agent": [{ group: "Main", items: [{ to: "/hotel-agent", label: "Hotels", icon: Hotel }] }],
-  "travel-agent": [{ group: "Main", items: [{ to: "/travel-agent", label: "Travel", icon: Plane }] }],
+  "hotel-agent": [{ group: "Main", items: [{ to: "/hotel-agent", label: "Hotels", icon: Hotel }, { to: "/hotel-agent/events", label: "Assigned Events", icon: Calendar }] }],
+  "travel-agent": [{ group: "Main", items: [{ to: "/travel-agent", label: "Travel", icon: Plane }, { to: "/travel-agent/events", label: "Assigned Events", icon: Calendar }] }],
   vendor: [
     { 
       group: "Execution", 
       items: [
         { to: "/vendor", label: "Service Execution", icon: Truck },
+        { to: "/vendor/catalog", label: "Service Catalog", icon: Layers, badge: "Prices" },
+        { to: "/vendor/events", label: "Assigned Events", icon: Calendar },
         { to: "/vendor/billing", label: "Billing & Settlement", icon: DollarSign, badge: "Invoices" },
         { to: "/vendor/history", label: "Fulfillment History", icon: FileText }
       ] 
     }
   ],
   volunteer: [{ group: "Main", items: [{ to: "/volunteer", label: "Tasks", icon: Users }] }],
-  superadmin: [{ group: "Admin", items: [{ to: "/super-admin", label: "Platform", icon: ShieldCheck }] }]
+  superadmin: [
+    { 
+      group: "Admin", 
+      items: [
+        { to: "/super-admin", label: "Platform", icon: ShieldCheck },
+        { to: "/super-admin/organizers", label: "Organizers", icon: Users }
+      ] 
+    }
+  ]
 };
 
 export function DashboardShell({ children, title, subtitle, backLink }: { children: React.ReactNode; title: string; subtitle?: string; backLink?: string }) {
@@ -106,6 +134,25 @@ export function DashboardShell({ children, title, subtitle, backLink }: { childr
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const { role, setRole } = useRole();
+  const router = useRouter();
+
+  const handleRoleSwitch = (newRole: Role) => {
+    setRole(newRole);
+    // Map roles to their entry-point dashboards
+    const routes: Record<string, string> = {
+      organizer: "/organizer",
+      visitor: "/visitor",
+      exhibitor: "/exhibitor",
+      speaker: "/speaker",
+      vendor: "/vendor",
+      "hotel-agent": "/hotel-agent",
+      "travel-agent": "/travel-agent",
+      delegate: "/delegate",
+      volunteer: "/volunteer",
+      superadmin: "/super-admin"
+    };
+    if (routes[newRole]) router.push(routes[newRole]);
+  };
 
   useEffect(() => {
     const checkMobile = () => {
@@ -120,15 +167,61 @@ export function DashboardShell({ children, title, subtitle, backLink }: { childr
 
   const currentGroups = roleNavGroups[role] || roleNavGroups.visitor;
 
+  // Automated Role Switch based on URL + Onboarding Lock logic
+  useEffect(() => {
+    if (path.startsWith("/exhibitor") && role !== "exhibitor") setRole("exhibitor");
+    if (path.startsWith("/vendor") && role !== "vendor") setRole("vendor");
+    if (path.startsWith("/organizer") && role !== "organizer") setRole("organizer");
+    if (path.startsWith("/visitor") && role !== "visitor") setRole("visitor");
+    if (path.startsWith("/speaker") && role !== "speaker") setRole("speaker");
+    if (path.startsWith("/hotel-agent") && role !== "hotel-agent") setRole("hotel-agent");
+    if (path.startsWith("/travel-agent") && role !== "travel-agent") setRole("travel-agent");
+  }, [path, role, setRole]);
+
+  // Check if first booking is completed
+  const [hasCompletedBooking, setHasCompletedBooking] = useState(true);
+  useEffect(() => {
+    const bookings = localStorage.getItem("eventflow_pro_user_bookings_v1");
+    const stallBookings = localStorage.getItem("eventflow_pro_exhibitor_requests_v1"); // Simplified check
+    
+    // If on a restricted role dashboard, check if they have anything booked
+    if (role === "visitor" || role === "exhibitor") {
+       const hasAny = (bookings && JSON.parse(bookings).length > 0) || 
+                      (stallBookings && JSON.parse(stallBookings).length > 0);
+       // setHasCompletedBooking(!!hasAny);
+       // For demo purposes, I'll allow everything if they are ALREADY on the dashboard
+       // but restricted nav items will be hidden if not booked.
+    }
+  }, [role]);
+
+  // Filter groups if onboarding is locked - Memoized for speed
+  const filteredGroups = useMemo(() => {
+    if (typeof window === "undefined") return currentGroups;
+
+    const visitorBookings = localStorage.getItem("eventflow_pro_user_bookings_v1");
+    const exhibitorBookings = localStorage.getItem("eventflow_pro_exhibitor_requests_v1");
+    
+    const hasAny = (visitorBookings && JSON.parse(visitorBookings).length > 0) || 
+                   (exhibitorBookings && JSON.parse(exhibitorBookings).length > 0) ||
+                   (role === "organizer" || role === "vendor" || role === "superadmin"); 
+
+    if (!hasAny && ["visitor", "exhibitor", "delegate", "speaker"].includes(role)) {
+       // Return only a "Getting Started" or empty list to hide the sidebar logic
+       return [];
+    }
+    
+    return currentGroups;
+  }, [currentGroups, role]);
+
   return (
     <div className="flex min-h-screen bg-transparent">
       {/* Desktop Sidebar */}
-      {!isMobile && (
+      {!isMobile && filteredGroups.length > 0 && (
         <motion.aside 
           initial={false}
           animate={{ width: isCollapsed ? 88 : 280 }}
           className="sticky top-0 h-screen shrink-0 flex flex-col border-r border-white/5 bg-sidebar/40 backdrop-blur-3xl z-40 overflow-hidden"
-          transition={{ duration: 0.5, ease: [0.2, 0.8, 0.2, 1] }}
+          transition={{ duration: 0.3, ease: [0.2, 0.8, 0.2, 1] }}
         >
           {/* Sidebar Header */}
           <div className={cn("px-6 py-8 flex items-center justify-between transition-all", isCollapsed && "px-0 justify-center")}>
@@ -170,7 +263,7 @@ export function DashboardShell({ children, title, subtitle, backLink }: { childr
 
           {/* Navigation with Groups */}
           <div className="flex-1 px-4 space-y-8 overflow-y-auto no-scrollbar py-2">
-            {currentGroups.map((group, gIdx) => (
+            {filteredGroups.map((group, gIdx) => (
               <div key={gIdx} className="space-y-1.5">
                 {!isCollapsed && (
                   <h3 className="px-3 text-[10px] font-bold text-muted-foreground/40 uppercase tracking-[0.2em] mb-3">
@@ -242,7 +335,7 @@ export function DashboardShell({ children, title, subtitle, backLink }: { childr
 
                 <div className="p-3 bg-primary/5 rounded-xl border border-primary/10">
                   <p className="text-[9px] font-bold text-muted-foreground/60 uppercase tracking-widest mb-2">Simulation Role</p>
-                  <select value={role} onChange={e => setRole(e.target.value as any)}
+                  <select value={role} onChange={e => handleRoleSwitch(e.target.value as any)}
                     className="w-full bg-transparent text-[11px] font-bold capitalize outline-none cursor-pointer hover:text-primary transition-colors">
                     {Object.keys(roleNavGroups).map(r => <option key={r} value={r} className="bg-background text-foreground">{r.replace("-", " ")}</option>)}
                   </select>
@@ -309,7 +402,7 @@ export function DashboardShell({ children, title, subtitle, backLink }: { childr
         {isMobile && (
           <div className="fixed bottom-6 left-6 right-6 z-50 flex justify-center">
             <nav className="flex items-center gap-1 p-1.5 glass-strong rounded-[2.5rem] shadow-2xl border border-white/10 max-w-sm w-full">
-               {currentGroups[0].items.slice(0, 4).map(item => {
+               {filteredGroups[0].items.slice(0, 4).map(item => {
                  const active = path === item.to;
                  return (
                    <Link key={item.to} href={item.to} className={cn(

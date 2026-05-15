@@ -23,6 +23,13 @@ import {
   savePersistedPartners, 
   pushNewPartnerToStorage 
 } from "@/lib/partnersStore";
+import { 
+  getPersistedExhibitorRequests, 
+  assignVendorToRequest, 
+  ExhibitorRequest,
+  MOCK_VENDORS,
+  Vendor
+} from "@/lib/servicesStore";
 
 const partnerTabs = ["All Partners", "Hotel Agents", "Travel Agents", "Vendors"] as const;
 
@@ -37,9 +44,35 @@ export default function OrganizerOperations() {
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
 
   // Load from centralized client store on module mount
+  const [pendingRequests, setPendingRequests] = useState<ExhibitorRequest[]>([]);
+
   useEffect(() => {
     setPartnersList(getPersistedPartners());
+    setPendingRequests(getPersistedExhibitorRequests());
   }, []);
+
+  const refreshRequests = () => {
+    setPendingRequests(getPersistedExhibitorRequests());
+  };
+
+  const [assignEventId, setAssignEventId] = useState("");
+
+  const handleAssignToEvent = (partnerId: string, eventId: string) => {
+    setPartnersList(prev => {
+      const updated = prev.map(p => {
+        if (p.id !== partnerId) return p;
+        if (p.assignedEventIds?.includes(eventId)) {
+          toast.error("Partner already mapped to this event timeline.");
+          return p;
+        }
+        const newIds = [...(p.assignedEventIds || [p.eventId]), eventId];
+        toast.success(`Assigned ${p.name} to ${getEventTitle(eventId)}`);
+        return { ...p, assignedEventIds: newIds, eventsCount: newIds.length };
+      });
+      savePersistedPartners(updated);
+      return updated;
+    });
+  };
 
   // Invitation Buffer Form state mapping strictly to specific target events
   const [newInviteForm, setNewInviteForm] = useState({
@@ -82,6 +115,7 @@ export default function OrganizerOperations() {
     const generatedPartner: GlobalPartner = {
       id: `gp-${Date.now()}`,
       eventId: newInviteForm.targetEventId,
+      assignedEventIds: [newInviteForm.targetEventId],
       name: newInviteForm.name.trim(),
       company: newInviteForm.company.trim() || `${newInviteForm.name.trim()} Agency`,
       services: newInviteForm.selectedServices,
@@ -159,6 +193,15 @@ export default function OrganizerOperations() {
     toast.success(`Commercial link to "${name}" successfully dissolved.`);
   };
 
+  const [requestForAssignment, setRequestForAssignment] = useState<ExhibitorRequest | null>(null);
+
+  const handleFinalAssignment = (reqId: string, vendorId: string) => {
+    assignVendorToRequest(reqId, vendorId);
+    toast.success("Service request assigned to Vendor!");
+    refreshRequests();
+    setRequestForAssignment(null);
+  };
+
   const getEventTitle = (id: string) => {
     const matched = events.find(e => e.id === id);
     return matched ? matched.title : "Global Portfolio";
@@ -210,58 +253,51 @@ export default function OrganizerOperations() {
         </span>
       </div>
 
-      {/* ── COUNTERS ── */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
-        <div className="p-4 rounded-xl glass border border-border/40 bg-primary/5 flex flex-col justify-between col-span-2 md:col-span-1">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-primary flex items-center gap-1.5">
-            <Users className="h-3.5 w-3.5" /> Total Partners
-          </span>
-          <div className="mt-2">
-            <span className="text-2xl font-black text-foreground">{totalPartners}</span>
-            <span className="text-[10px] text-muted-foreground block mt-0.5">Contracted Nodes</span>
+      {/* ── PENDING SERVICE TRIAGE (NEW) ── */}
+      {pendingRequests.filter(r => r.status === "Unassigned").length > 0 && (
+        <GlassCard className="p-6 border-amber-500/30 bg-amber-500/[0.02] mb-8" hover={false}>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+               <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                 <Zap className="h-4 w-4 text-amber-500" /> Pending Staging Triage
+               </h3>
+               <p className="text-[11px] text-muted-foreground mt-0.5">Exhibitors have requested additional infrastructure. Assign a vendor to initiate execution.</p>
+            </div>
+            <span className="px-2 py-0.5 rounded bg-amber-500/10 text-amber-500 text-[10px] font-bold border border-amber-500/20">
+              {pendingRequests.filter(r => r.status === "Unassigned").length} ACTION ITEMS
+            </span>
           </div>
-        </div>
 
-        <div className="p-4 rounded-xl glass border border-border/40 flex flex-col justify-between">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
-            <Hotel className="h-3.5 w-3.5 text-blue-500" /> Hotel Agents
-          </span>
-          <div className="mt-2">
-            <span className="text-xl font-bold text-foreground">{totalHotelAgents}</span>
-            <span className="text-[9px] text-emerald-500 font-bold block mt-0.5">Yield API Active</span>
+          <div className="grid gap-3">
+            {pendingRequests.filter(r => r.status === "Unassigned").map(req => (
+              <div key={req.id} className="p-4 rounded-xl glass border border-border/40 flex items-center justify-between gap-4">
+                 <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-lg bg-amber-500/10 text-amber-500 grid place-items-center shrink-0">
+                       <Wrench className="h-4 w-4" />
+                    </div>
+                    <div>
+                       <p className="text-xs font-bold text-foreground">{req.title} <span className="text-[10px] text-muted-foreground font-medium ml-2">({req.category})</span></p>
+                       <p className="text-[10px] text-muted-foreground mt-0.5">Exhibitor: <span className="font-bold text-foreground">{req.exhibitorName}</span> · Event: <span className="font-bold text-foreground">{req.eventName}</span></p>
+                    </div>
+                 </div>
+                 <div className="flex items-center gap-3">
+                    <div className="text-right hidden sm:block">
+                       <span className="text-[9px] font-bold text-muted-foreground uppercase block">Cost Quote</span>
+                       <span className="text-xs font-bold text-foreground block">{req.cost}</span>
+                    </div>
+                    <GradientButton 
+                      onClick={() => setRequestForAssignment(req)}
+                      size="sm" 
+                      className="h-8 text-[10px] px-3"
+                    >
+                       Assign Vendor
+                    </GradientButton>
+                 </div>
+              </div>
+            ))}
           </div>
-        </div>
-
-        <div className="p-4 rounded-xl glass border border-border/40 flex flex-col justify-between">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
-            <Plane className="h-3.5 w-3.5 text-purple-500" /> Travel Agents
-          </span>
-          <div className="mt-2">
-            <span className="text-xl font-bold text-foreground">{totalTravelAgents}</span>
-            <span className="text-[9px] text-muted-foreground block mt-0.5">Shuttle & Flight Bundles</span>
-          </div>
-        </div>
-
-        <div className="p-4 rounded-xl glass border border-border/40 flex flex-col justify-between">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
-            <Truck className="h-3.5 w-3.5 text-amber-500" /> Vendors
-          </span>
-          <div className="mt-2">
-            <span className="text-xl font-bold text-foreground">{totalVendors}</span>
-            <span className="text-[9px] text-amber-500 font-bold block mt-0.5">Staging Logistics</span>
-          </div>
-        </div>
-
-        <div className="p-4 rounded-xl glass border border-border/40 flex flex-col justify-between bg-emerald-500/5">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-500 flex items-center gap-1.5">
-            <DollarSign className="h-3.5 w-3.5" /> Comm. Ledger
-          </span>
-          <div className="mt-2">
-            <span className="text-xl font-bold text-emerald-500">8% - 15%</span>
-            <span className="text-[9px] text-muted-foreground block mt-0.5">Tiered Commission Rates</span>
-          </div>
-        </div>
-      </div>
+        </GlassCard>
+      )}
 
       <div className="grid lg:grid-cols-12 gap-8">
          {/* LEFT MAIN COL: DYNAMIC LIST CONTROLS & CARDS */}
@@ -544,7 +580,7 @@ export default function OrganizerOperations() {
               animate={{ opacity: 1 }} 
               exit={{ opacity: 0 }}
               onClick={() => setIsInviteModalOpen(false)}
-              className="absolute inset-0 bg-neutral-950/85 backdrop-blur-xl"
+              className="absolute inset-0 bg-black/60 backdrop-blur-xl"
             />
 
             <motion.div
@@ -552,7 +588,7 @@ export default function OrganizerOperations() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.96, y: 20 }}
               transition={{ type: "spring", damping: 24, stiffness: 300 }}
-              className="relative w-full max-w-2xl bg-neutral-900/95 border-2 border-primary/40 rounded-2xl shadow-[0_0_50px_-12px_rgba(var(--primary),0.3)] z-10 overflow-hidden flex flex-col max-h-[90vh]"
+              className="relative w-full max-w-2xl bg-background border-2 border-primary/40 rounded-2xl shadow-[0_0_50px_-12px_rgba(var(--primary),0.3)] z-10 overflow-hidden flex flex-col max-h-[90vh]"
             >
               <div className="flex items-center justify-between px-6 py-5 bg-gradient-to-r from-primary/30 via-background/90 to-background/90 border-b border-primary/30 backdrop-blur-md">
                 <div>
@@ -570,7 +606,7 @@ export default function OrganizerOperations() {
               </div>
 
               <form onSubmit={handleCommitPartnerInvitation} className="p-6 space-y-6 overflow-y-auto no-scrollbar flex-1">
-                <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 space-y-4">
+                <div className="p-4 rounded-xl bg-accent/20 border border-border/40 space-y-4">
                   <div>
                     <label className="text-xs font-extrabold text-foreground uppercase tracking-wider block mb-2 flex items-center gap-1.5">
                       <Tag className="h-3.5 w-3.5 text-primary" /> Commercial Entity Identity Details
@@ -646,7 +682,7 @@ export default function OrganizerOperations() {
                 </div>
 
                 {/* Specifically requested capability mapping: Vendor, Hotel, Travel, or overlapping all-in-one */}
-                <div className="p-4 rounded-xl bg-white/[0.04] border border-white/10 space-y-3">
+                <div className="p-4 rounded-xl bg-accent/30 border border-border/60 space-y-3">
                   <div>
                     <label className="text-xs font-extrabold text-foreground uppercase tracking-wider block">
                       Assigned Capabilities & Service Scopes *
@@ -673,7 +709,7 @@ export default function OrganizerOperations() {
                           className={cn(
                             "p-3.5 rounded-xl border-2 text-left transition-all relative group overflow-hidden flex flex-col justify-between shadow-xs",
                             isSelected 
-                              ? `bg-white/10 border-primary` 
+                              ? `bg-primary/10 border-primary` 
                               : "bg-background/80 border-border/80 hover:border-border text-muted-foreground"
                           )}
                         >
@@ -767,7 +803,7 @@ export default function OrganizerOperations() {
                   </div>
                 </div>
 
-                <div className="pt-4 border-t border-white/10 flex items-center justify-end gap-3">
+                <div className="pt-4 border-t border-border/60 flex items-center justify-end gap-3">
                   <button
                     type="button"
                     onClick={() => setIsInviteModalOpen(false)}
@@ -896,16 +932,43 @@ export default function OrganizerOperations() {
                  <div className="p-5 overflow-y-auto space-y-4 flex-1 no-scrollbar text-xs">
                     <div className="p-4 rounded-xl bg-accent/10 border border-border/40 space-y-3">
                        <span className="text-[10px] font-bold uppercase tracking-wider text-primary block">
-                         Assigned Event Details
+                         Assigned Event Timelines
                        </span>
-                       <div className="grid grid-cols-2 gap-3 font-mono">
-                          <div>
-                             <span className="text-[9px] text-muted-foreground block font-sans uppercase">Event Name</span>
-                             <span className="font-bold text-foreground">{getEventTitle(selectedPartner.eventId)}</span>
-                          </div>
-                          <div>
-                             <span className="text-[9px] text-muted-foreground block font-sans uppercase">Status</span>
-                             <span className="font-bold text-emerald-500">{selectedPartner.status}</span>
+                       <div className="space-y-2">
+                          {(selectedPartner.assignedEventIds || [selectedPartner.eventId]).map(eid => (
+                            <div key={eid} className="flex items-center justify-between p-2 rounded-lg bg-background border border-border/60">
+                               <span className="font-bold text-foreground">📌 {getEventTitle(eid)}</span>
+                               <span className="text-[10px] font-bold text-emerald-500 font-mono">Active</span>
+                            </div>
+                          ))}
+                       </div>
+
+                       <div className="pt-3 border-t border-border/40 space-y-2">
+                          <span className="text-[9px] text-muted-foreground font-bold uppercase">Assign to Additional Event</span>
+                          <div className="flex gap-2">
+                             <select 
+                               className="flex-1 bg-background border border-border rounded-lg px-2 py-1.5 text-xs outline-none"
+                               value={assignEventId}
+                               onChange={e => setAssignEventId(e.target.value)}
+                             >
+                                <option value="">Select Event...</option>
+                                {events.filter(ev => !(selectedPartner.assignedEventIds || [selectedPartner.eventId]).includes(ev.id)).map(ev => (
+                                  <option key={ev.id} value={ev.id}>{ev.title}</option>
+                                ))}
+                             </select>
+                             <button 
+                               onClick={() => {
+                                 if (!assignEventId) return;
+                                 handleAssignToEvent(selectedPartner.id, assignEventId);
+                                 setAssignEventId("");
+                                 // Close and reopen to refresh selectedPartner (simple hack for demo)
+                                 const updated = getPersistedPartners().find(p => p.id === selectedPartner.id);
+                                 if (updated) setSelectedPartner(updated);
+                               }}
+                               className="px-3 py-1.5 rounded-lg bg-primary text-white text-[10px] font-bold"
+                             >
+                                Assign
+                             </button>
                           </div>
                        </div>
 
@@ -926,7 +989,7 @@ export default function OrganizerOperations() {
                              size="sm"
                              className="text-[10px] h-7 px-3"
                            >
-                              Update Event Scope
+                               Update Event Scope
                            </GradientButton>
                          </div>
                        )}
@@ -973,6 +1036,89 @@ export default function OrganizerOperations() {
               </motion.div>
            </div>
          )}
+      </AnimatePresence>
+
+      {/* ── OVERLAY: TRIAGE ASSIGNMENT MODAL ── */}
+      <AnimatePresence>
+        {requestForAssignment && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setRequestForAssignment(null)}
+              className="absolute inset-0 bg-neutral-950/90 backdrop-blur-md"
+            />
+            
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              transition={{ type: "spring", damping: 22, stiffness: 320 }}
+              className="relative w-full max-w-lg bg-background border-2 border-amber-500/30 rounded-2xl shadow-2xl z-10 overflow-hidden"
+            >
+              <div className="p-5 bg-amber-500/10 border-b border-amber-500/30 flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                    <Layers className="h-4 w-4 text-amber-500" /> Assign Execution Partner
+                  </h3>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">Requirement: <span className="font-bold text-foreground">{requestForAssignment.title}</span></p>
+                </div>
+                <button onClick={() => setRequestForAssignment(null)} className="text-muted-foreground hover:text-foreground">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto no-scrollbar">
+                <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-1">
+                   <span>Qualified Partners ({partnersList.filter(p => p.services.includes("Vendor")).length})</span>
+                   <span>Specialty Match</span>
+                </div>
+
+                <div className="space-y-2">
+                   {partnersList.filter(p => p.services.includes("Vendor")).map(vendor => (
+                     <div 
+                       key={vendor.id} 
+                       className="p-3 rounded-xl border border-border/60 hover:border-primary/40 bg-accent/5 transition-all group flex items-center justify-between"
+                     >
+                        <div className="flex items-center gap-3">
+                           <img src={vendor.avatar} alt="" className="h-9 w-9 rounded-lg bg-background border border-border" />
+                           <div>
+                              <p className="text-xs font-bold text-foreground group-hover:text-primary transition-colors">{vendor.name}</p>
+                              <p className="text-[10px] text-muted-foreground font-medium">{vendor.repName} · {vendor.phone}</p>
+                           </div>
+                        </div>
+                        <GradientButton 
+                          onClick={() => handleFinalAssignment(requestForAssignment.id, vendor.id)}
+                          size="sm" 
+                          className="h-7 text-[9px] px-3"
+                        >
+                           Assign
+                        </GradientButton>
+                     </div>
+                   ))}
+
+                   {partnersList.filter(p => p.services.includes("Vendor")).length === 0 && (
+                     <div className="p-8 text-center glass rounded-xl border border-dashed border-border">
+                        <Users className="h-6 w-6 text-muted-foreground/30 mx-auto mb-2" />
+                        <p className="text-[10px] font-bold text-muted-foreground">No vendors currently mapped in global registry.</p>
+                     </div>
+                   )}
+                </div>
+              </div>
+
+              <div className="p-4 bg-accent/20 border-t border-border flex items-center justify-between gap-4">
+                 <p className="text-[10px] text-muted-foreground leading-tight italic">
+                   Note: After assignment, the exhibitor will see the vendor's contact details in their staging portal.
+                 </p>
+                 <button 
+                   onClick={() => setRequestForAssignment(null)}
+                   className="px-3 py-1.5 rounded-lg bg-background border border-border text-xs font-bold"
+                 >
+                   Cancel
+                 </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
       </AnimatePresence>
     </DashboardShell>
   );

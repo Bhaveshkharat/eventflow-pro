@@ -5,21 +5,19 @@ import { DashboardShell } from "@/components/layout/DashboardShell";
 import { GlassCard } from "@/components/ui-ext/GlassCard";
 import { GradientButton } from "@/components/ui-ext/GradientButton";
 import { StatCard } from "@/components/ui-ext/StatCard";
+import { superAdminOrganizers } from "@/data/mock";
 
 export default function SuperAdminDashboard() {
-  const organizers = [
-    { name: "Lumen Events", status: "Pro", events: 12, revenue: 42000, logo: "https://i.pravatar.cc/80?img=11" },
-    { name: "Orbit Expos", status: "Enterprise", events: 45, revenue: 184000, logo: "https://i.pravatar.cc/80?img=12" },
-    { name: "Studio Co", status: "Trial", events: 2, revenue: 850, logo: "https://i.pravatar.cc/80?img=13" },
-  ];
+  const totalOrganizers = superAdminOrganizers.length;
+  const mrr = superAdminOrganizers.reduce((sum, o) => sum + o.revenue, 0);
 
   return (
     <DashboardShell title="Platform Overview" subtitle="Super Admin dashboard for global platform management.">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <StatCard icon={Globe} label="Total Events" value={2481} delta="+42" />
         <StatCard icon={Users} label="Total Users" value={142091} delta="+1.2k" />
-        <StatCard icon={ShieldCheck} label="Organizers" value={384} delta="+12" />
-        <StatCard icon={PieChart} label="MRR" value={84200} prefix="$" delta="+14%" />
+        <StatCard icon={ShieldCheck} label="Organizers" value={totalOrganizers} delta="+12" />
+        <StatCard icon={PieChart} label="MRR" value={mrr} prefix="$" delta="+14%" />
       </div>
 
       <div className="grid lg:grid-cols-12 gap-8">
@@ -37,7 +35,7 @@ export default function SuperAdminDashboard() {
            </div>
 
            <div className="space-y-3">
-              {organizers.map(o => (
+              {superAdminOrganizers.slice(0, 5).map(o => (
                 <GlassCard key={o.name} className="p-4" hover={true}>
                    <div className="flex items-center gap-4">
                       <img src={o.logo} className="h-10 w-10 rounded-full" alt="" />

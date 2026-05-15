@@ -16,7 +16,8 @@ export interface GlobalPartner {
   commission: number | string;
   split: string;
   status: string;
-  eventId: string; // Target bound event timeline scope
+  eventId: string; // Legacy field for primary/first event
+  assignedEventIds: string[]; // List of all assigned event IDs
   eventsCount: number;
   rating: number;
   bio: string;
@@ -30,6 +31,7 @@ export const INITIAL_GLOBAL_PARTNERS: GlobalPartner[] = [
   { 
     id: "gp-1", 
     eventId: "techsummit-26", 
+    assignedEventIds: ["techsummit-26", "fintech-asia"],
     name: "SkyTravel Logistics", 
     company: "SkyTravel Global Hub",
     services: ["Travel", "Vendor"], 
@@ -49,6 +51,7 @@ export const INITIAL_GLOBAL_PARTNERS: GlobalPartner[] = [
   { 
     id: "gp-2", 
     eventId: "techsummit-26", 
+    assignedEventIds: ["techsummit-26"],
     name: "Grand Marquise Suites", 
     company: "Grand Marquise Hotels",
     services: ["Hotel"], 
@@ -68,6 +71,7 @@ export const INITIAL_GLOBAL_PARTNERS: GlobalPartner[] = [
   { 
     id: "gp-3", 
     eventId: "designweek-26", 
+    assignedEventIds: ["designweek-26", "techsummit-26"],
     name: "Peak Visual Vendors", 
     company: "Peak Visual Rigging",
     services: ["Vendor"], 
@@ -87,9 +91,10 @@ export const INITIAL_GLOBAL_PARTNERS: GlobalPartner[] = [
   { 
     id: "gp-4", 
     eventId: "fintech-asia", 
+    assignedEventIds: ["fintech-asia"],
     name: "Global Stay Connect", 
     company: "Global Stay Connect Hub",
-    services: ["Hotel", "Travel", "Vendor"], // Fully combined partner
+    services: ["Hotel", "Travel", "Vendor"], 
     type: "Hotel",
     eventsCount: 24, 
     rating: 4.7, 
@@ -106,6 +111,7 @@ export const INITIAL_GLOBAL_PARTNERS: GlobalPartner[] = [
   { 
     id: "gp-5", 
     eventId: "techsummit-26", 
+    assignedEventIds: ["techsummit-26"],
     name: "Transit Shuttle Pro", 
     company: "Transit Shuttle Agency",
     services: ["Travel"], 

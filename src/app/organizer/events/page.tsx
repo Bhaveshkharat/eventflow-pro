@@ -64,7 +64,7 @@ export default function OrganizerEvents() {
                           </div>
                        </div>
                        <div className="flex gap-2 shrink-0">
-                          <Link href={`/organizer/events/${e.id}`}>
+                          <Link href={`/organizer/events/detail?id=${e.id}`}>
                             <button className="h-9 w-9 rounded-xl glass grid place-items-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all border border-white/5">
                                <Edit3 className="h-4 w-4" />
                             </button>
@@ -82,7 +82,7 @@ export default function OrganizerEvents() {
                     <EventMiniStat icon={Users} label="Registered" value={e.attendees} color="text-blue-500" />
                     <EventMiniStat icon={DollarSign} label="Revenue" value="$142.5k" color="text-emerald-500" />
                     <EventMiniStat icon={BarChart3} label="Conversion" value="8.4%" color="text-purple-500" />
-                    <Link href={`/organizer/events/${e.id}`} className="flex items-center justify-end">
+                    <Link href={`/organizer/events/detail?id=${e.id}`} className="flex items-center justify-end">
                        <button className="text-[10px] font-bold uppercase tracking-widest text-primary flex items-center gap-1 group/btn">
                           Manage Event <ChevronRight className="h-3 w-3 group-hover/btn:translate-x-1 transition-transform" />
                        </button>

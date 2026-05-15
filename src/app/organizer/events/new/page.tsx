@@ -7,8 +7,10 @@ import {
   MapPin, Ticket, DollarSign, Image as ImageIcon, 
   Settings, Users, ShieldCheck, Zap, Mic2, Layers,
   Hotel, Plane, Truck, Plus, Trash2, Box, Sparkles, 
-  Building2, Mail, Phone, CheckCircle2, X
+  Building2, Mail, Phone, CheckCircle2, X, Search
 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { events } from "@/data/mock";
 import { DashboardShell } from "@/components/layout/DashboardShell";
 import { GlassCard } from "@/components/ui-ext/GlassCard";
 import { GradientButton } from "@/components/ui-ext/GradientButton";
@@ -34,7 +36,7 @@ export default function NewEventWizard() {
   // State extension containing explicit pricing metrics mapping, Stalls footprints, and Partner connections
   const [formData, setFormData] = useState({
     title: "", date: "", venue: "", city: "",
-    currency: "USD", commission: "10",
+    currency: "INR", commission: "10",
     dynamicPricing: true,
     isMultiDay: false,
     endDate: "",
@@ -88,6 +90,12 @@ export default function NewEventWizard() {
   // Success dispatch verification dialog overlay
   const [showSuccessSummary, setShowSuccessSummary] = useState(false);
   const [dispatchedPartners, setDispatchedPartners] = useState<any[]>([]);
+  const [publishedEventId, setPublishedEventId] = useState("");
+  const router = useRouter();
+
+  const [partnerSearchQuery, setPartnerSearchQuery] = useState("");
+  const [partnerRoleFilter, setPartnerRoleFilter] = useState<"all" | RoleKey>("all");
+  const [showAddPartnerModal, setShowAddPartnerModal] = useState(false);
 
   const nextStep = () => setCurrentStep(s => Math.min(s + 1, steps.length - 1));
   const prevStep = () => setCurrentStep(s => Math.max(s - 1, 0));
@@ -116,6 +124,16 @@ export default function NewEventWizard() {
       stallsInfo: prev.stallsInfo.map(s => s.id === id ? { ...s, active: !s.active } : s)
     }));
     toast.info("Stall configuration status toggled.");
+  };
+
+  const toggleRole = (roleKey: keyof typeof formData.roles) => {
+    setFormData(prev => ({
+      ...prev,
+      roles: {
+        ...prev.roles,
+        [roleKey]: !prev.roles[roleKey]
+      }
+    }));
   };
 
   const handleAddCustomStall = (e: React.FormEvent) => {
@@ -249,20 +267,42 @@ export default function NewEventWizard() {
     setNewPartnerName("");
     setNewPartnerEmail("");
     setNewPartnerCompany("");
+    setShowAddPartnerModal(false);
     toast.success(`Partner identity mapped & designated to active scoping ledger!`);
   };
 
   // Final confirmation action: computing auto invitations
   const handlePublishSequence = () => {
     const invitedList = formData.assignedPartners.filter(partner => partner.selected);
+    const newId = (formData.title || "New Event").toLowerCase().replace(/[^a-z0-9]+/g, "-") + "-" + Date.now().toString().slice(-4);
+    
+    events.unshift({
+      id: newId,
+      title: formData.title || "Untitled Event",
+      tagline: "Custom configured event payload.",
+      category: "Technology",
+      date: formData.date ? formData.date.split("T")[0] : "2026-01-01",
+      endDate: formData.endDate ? formData.endDate.split("T")[0] : "2026-01-02",
+      city: formData.city || "San Francisco",
+      country: "USA",
+      venue: formData.venue || "TBD",
+      image: "https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=1600&q=70",
+      attendees: 0,
+      exhibitors: formData.stallsInfo.filter(s => s.active).length,
+      rating: 0,
+      priceFrom: parseInt(formData.pricingTiers.general.price) || 0,
+      featured: true,
+      tags: ["New"]
+    });
 
+    setPublishedEventId(newId);
     setDispatchedPartners(invitedList);
     setShowSuccessSummary(true);
     toast.success("Event published successfully!");
   };
 
   const handleFinalRedirect = () => {
-    window.location.href = "/organizer/events/techsummit-26";
+    router.push("/organizer/events");
   };
 
   return (
@@ -623,6 +663,7 @@ export default function NewEventWizard() {
                         onChange={(e) => setFormData(prev => ({ ...prev, currency: e.target.value }))}
                         className="w-full py-2.5 px-3 bg-background border border-border rounded-xl text-xs font-bold font-mono outline-none focus:border-primary"
                       >
+                        <option value="INR">INR (₹)</option>
                         <option value="USD">USD ($)</option>
                         <option value="EUR">EUR (€)</option>
                         <option value="GBP">GBP (£)</option>
@@ -771,21 +812,69 @@ export default function NewEventWizard() {
               )}
 
               {/* STEP 3: ASSIGN PARTNERS INLINE */}
-              {currentStep === 3 && (
+              {currentStep === 3 && (() => {
+                const filteredPartners = formData.assignedPartners.filter(p => {
+                  const matchesSearch = p.name.toLowerCase().includes(partnerSearchQuery.toLowerCase()) || 
+                                        p.email.toLowerCase().includes(partnerSearchQuery.toLowerCase()) || 
+                                        p.company.toLowerCase().includes(partnerSearchQuery.toLowerCase());
+                  const matchesRole = partnerRoleFilter === "all" || p.roles.includes(partnerRoleFilter as RoleKey);
+                  return matchesSearch && matchesRole;
+                });
+
+                return (
                 <div className="space-y-6">
-                  <div className="border-b border-border/40 pb-3">
-                    <span className="text-xs font-bold text-foreground uppercase tracking-wider block flex items-center gap-2">
-                      <Building2 className="h-4 w-4 text-primary" /> Assign Partners
-                    </span>
-                    <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
-                      Select external partners (vendors, travel, and hotel providers) for this event. 
-                      Invitations will be sent automatically when published.
-                    </p>
+                  <div className="border-b border-border/40 pb-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                      <span className="text-xs font-bold text-foreground uppercase tracking-wider block flex items-center gap-2">
+                        <Building2 className="h-4 w-4 text-primary" /> Assign Partners
+                      </span>
+                      <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
+                        Select external partners (vendors, travel, and hotel providers) for this event. 
+                        Invitations will be sent automatically when published.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <input 
+                        type="text"
+                        value={partnerSearchQuery}
+                        onChange={(e) => setPartnerSearchQuery(e.target.value)}
+                        placeholder="Search partners..."
+                        className="w-full pl-9 pr-3 py-2 text-xs bg-background border border-border rounded-xl text-foreground placeholder:text-muted-foreground outline-none focus:border-primary transition-all font-medium"
+                      />
+                    </div>
+                    <select
+                      value={partnerRoleFilter}
+                      onChange={(e) => setPartnerRoleFilter(e.target.value as "all" | RoleKey)}
+                      className="px-3 py-2 text-xs bg-background border border-border rounded-xl text-foreground font-medium outline-none focus:border-primary transition-all cursor-pointer"
+                    >
+                      <option value="all">All Categories</option>
+                      <option value="vendor">Vendor</option>
+                      <option value="hotel-agent">Hotel Partner</option>
+                      <option value="travel-agent">Travel Partner</option>
+                    </select>
+                    <GradientButton 
+                      onClick={() => setShowAddPartnerModal(true)} 
+                      type="button" 
+                      size="sm" 
+                      className="h-9 px-4 shrink-0 text-xs flex items-center gap-1.5"
+                    >
+                      <Plus className="h-3.5 w-3.5" /> Create New Partner
+                    </GradientButton>
                   </div>
 
                   {/* Scroller array containing state assignments */}
                   <div className="space-y-2 max-h-72 overflow-y-auto pr-1 no-scrollbar">
-                    {formData.assignedPartners.map(partner => (
+                    {filteredPartners.length === 0 ? (
+                      <div className="p-4 rounded-xl border border-dashed border-border flex flex-col items-center justify-center text-center text-muted-foreground bg-accent/5 py-8">
+                        <Building2 className="h-6 w-6 mb-2 opacity-50" />
+                        <p className="text-xs font-bold text-foreground">No partners found</p>
+                        <p className="text-[10px] mt-1">Adjust your search or filter.</p>
+                      </div>
+                    ) : filteredPartners.map(partner => (
                       <div 
                         key={partner.id} 
                         onClick={() => togglePartnerSelect(partner.id)}
@@ -838,58 +927,9 @@ export default function NewEventWizard() {
                       </div>
                     ))}
                   </div>
-
-                  {/* Provision Inline Contact Entity Form */}
-                  <form onSubmit={handleAddCustomPartner} className="p-4 rounded-xl bg-background border border-border space-y-3">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
-                      Invite New Partner
-                    </span>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                      <input 
-                        type="text" 
-                        value={newPartnerName}
-                        onChange={(e) => setNewPartnerName(e.target.value)}
-                        placeholder="Partner Contact Name *" 
-                        className="px-3 py-1.5 text-xs bg-accent/10 border border-border rounded-lg text-foreground placeholder:text-muted-foreground outline-none focus:border-primary transition-all font-medium"
-                      />
-                      <input 
-                        type="email" 
-                        value={newPartnerEmail}
-                        onChange={(e) => setNewPartnerEmail(e.target.value)}
-                        placeholder="Email Address *" 
-                        className="px-3 py-1.5 text-xs bg-accent/10 border border-border rounded-lg text-foreground placeholder:text-muted-foreground outline-none focus:border-primary transition-all font-medium"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                      <input 
-                        type="text" 
-                        value={newPartnerCompany}
-                        onChange={(e) => setNewPartnerCompany(e.target.value)}
-                        placeholder="Company Brand..." 
-                        className="sm:col-span-2 px-3 py-1.5 text-xs bg-accent/10 border border-border rounded-lg text-foreground placeholder:text-muted-foreground outline-none focus:border-primary transition-all font-medium"
-                      />
-                      <div className="flex gap-2">
-                        <select
-                          value={newPartnerRole}
-                          onChange={(e) => setNewPartnerRole(e.target.value as RoleKey)}
-                          className="flex-1 px-2 py-1.5 text-xs bg-accent/10 border border-border rounded-lg text-foreground font-bold outline-none focus:border-primary transition-all"
-                        >
-                          {PARTNER_ROLES_META.map(r => (
-                            <option key={r.key} value={r.key} className="bg-background text-foreground">
-                              {r.label}
-                            </option>
-                          ))}
-                        </select>
-                        <GradientButton type="submit" size="sm" className="h-8 px-3 shrink-0 text-xs">
-                          Add Partner
-                        </GradientButton>
-                      </div>
-                    </div>
-                  </form>
                 </div>
-              )}
+                );
+              })()}
 
               {/* STEP 4: PERMISSIONS */}
               {currentStep === 4 && (
@@ -898,10 +938,26 @@ export default function NewEventWizard() {
                     Attendee Role Authorizations
                   </span>
                   <div className="grid gap-3 md:grid-cols-2">
-                    <ToggleCard icon={Users} label="Visitor Turnstile Access" desc="General ticket purchasers" />
-                    <ToggleCard icon={Layers} label="Exhibitor Portal Mapping" desc="Allows assigning hall footprint booths" />
-                    <ToggleCard icon={Ticket} label="Delegate Fast-Track" desc="VIP access control matrix" />
-                    <ToggleCard icon={Mic2} label="Speaker Track Submission" desc="Call for papers entry pipeline" />
+                    <ToggleCard 
+                      icon={Users} label="Visitor Turnstile Access" desc="General ticket purchasers" 
+                      active={formData.roles.visitor} 
+                      onClick={() => toggleRole("visitor")} 
+                    />
+                    <ToggleCard 
+                      icon={Layers} label="Exhibitor Portal Mapping" desc="Allows assigning hall footprint booths" 
+                      active={formData.roles.exhibitor} 
+                      onClick={() => toggleRole("exhibitor")} 
+                    />
+                    <ToggleCard 
+                      icon={Ticket} label="Delegate Fast-Track" desc="VIP access control matrix" 
+                      active={formData.roles.delegate} 
+                      onClick={() => toggleRole("delegate")} 
+                    />
+                    <ToggleCard 
+                      icon={Mic2} label="Speaker Track Submission" desc="Call for papers entry pipeline" 
+                      active={formData.roles.speaker} 
+                      onClick={() => toggleRole("speaker")} 
+                    />
                   </div>
                 </div>
               )}
@@ -1153,6 +1209,113 @@ export default function NewEventWizard() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* CREATE NEW PARTNER MODAL */}
+      <AnimatePresence>
+        {showAddPartnerModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setShowAddPartnerModal(false)}
+              className="absolute inset-0 bg-neutral-950/80 backdrop-blur-md"
+            />
+            
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              transition={{ type: "spring", damping: 22, stiffness: 320 }}
+              className="relative w-full max-w-md bg-background border border-border rounded-2xl shadow-2xl z-10 overflow-hidden flex flex-col"
+            >
+               <div className="flex items-center justify-between px-6 py-4 bg-accent/20 border-b border-border">
+                  <div>
+                     <span className="text-[9px] font-bold font-mono text-primary uppercase tracking-widest block mb-0.5">
+                        Partner Hub Onboarding
+                     </span>
+                     <h2 className="text-sm font-bold text-foreground">
+                        Invite New Partner
+                     </h2>
+                  </div>
+                  <button onClick={() => setShowAddPartnerModal(false)} className="text-muted-foreground hover:text-foreground transition-colors">
+                     <X className="h-4 w-4" />
+                  </button>
+               </div>
+
+               <form onSubmit={handleAddCustomPartner} className="p-6 space-y-4">
+                  <div className="space-y-4 text-xs">
+                     <div>
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block mb-1">
+                           Partner Contact Name *
+                        </label>
+                        <input 
+                           type="text" 
+                           required
+                           value={newPartnerName}
+                           onChange={(e) => setNewPartnerName(e.target.value)}
+                           placeholder="e.g. John Doe" 
+                           className="w-full px-3 py-2 bg-background border border-border rounded-xl text-foreground placeholder:text-muted-foreground outline-none focus:border-primary transition-all font-medium"
+                        />
+                     </div>
+                     <div>
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block mb-1">
+                           Email Address *
+                        </label>
+                        <input 
+                           type="email" 
+                           required
+                           value={newPartnerEmail}
+                           onChange={(e) => setNewPartnerEmail(e.target.value)}
+                           placeholder="e.g. partner@company.com" 
+                           className="w-full px-3 py-2 bg-background border border-border rounded-xl text-foreground placeholder:text-muted-foreground outline-none focus:border-primary transition-all font-medium"
+                        />
+                     </div>
+                     <div>
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block mb-1">
+                           Company Brand
+                        </label>
+                        <input 
+                           type="text" 
+                           value={newPartnerCompany}
+                           onChange={(e) => setNewPartnerCompany(e.target.value)}
+                           placeholder="e.g. Global Supplies Inc." 
+                           className="w-full px-3 py-2 bg-background border border-border rounded-xl text-foreground placeholder:text-muted-foreground outline-none focus:border-primary transition-all font-medium"
+                        />
+                     </div>
+                     <div>
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block mb-1">
+                           Partner Category *
+                        </label>
+                        <select
+                           value={newPartnerRole}
+                           onChange={(e) => setNewPartnerRole(e.target.value as RoleKey)}
+                           className="w-full px-3 py-2 bg-background border border-border rounded-xl text-foreground font-bold outline-none focus:border-primary transition-all cursor-pointer"
+                        >
+                           {PARTNER_ROLES_META.map(r => (
+                              <option key={r.key} value={r.key}>
+                                 {r.label}
+                              </option>
+                           ))}
+                        </select>
+                     </div>
+                  </div>
+
+                  <div className="pt-4 border-t border-border flex justify-end gap-2">
+                     <button
+                        type="button"
+                        onClick={() => setShowAddPartnerModal(false)}
+                        className="px-3 py-1.5 rounded-lg font-bold text-muted-foreground hover:text-foreground text-xs transition-colors"
+                     >
+                        Cancel
+                     </button>
+                     <GradientButton type="submit" size="sm" className="h-9 text-xs px-5">
+                        Add & Select Partner
+                     </GradientButton>
+                  </div>
+               </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </DashboardShell>
   );
 }
@@ -1178,21 +1341,44 @@ function Field({ label, type = "text", value, onChange, placeholder, icon: Icon,
   );
 }
 
-function ToggleCard({ icon: Icon, label, desc }: any) {
+function ToggleCard({ icon: Icon, label, desc, active = true, onClick }: any) {
   return (
-    <div className="p-3 rounded-xl bg-background border border-border flex items-center justify-between gap-3 cursor-pointer hover:border-primary/40 transition-all">
-       <div className="flex items-center gap-2.5 min-w-0">
-          <div className="h-8 w-8 rounded-lg bg-accent flex items-center justify-center shrink-0">
-             <Icon className="h-4 w-4 text-muted-foreground" />
+    <div 
+      onClick={onClick}
+      className={cn(
+        "p-4 rounded-xl bg-background border flex items-center justify-between gap-3 cursor-pointer transition-all",
+        active ? "border-primary/40 shadow-[0_0_15px_rgba(var(--primary),0.1)]" : "border-border hover:border-border/80 opacity-70"
+      )}
+    >
+       <div className="flex items-center gap-3 min-w-0">
+          <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center shrink-0 transition-colors", active ? "bg-primary/10 text-primary" : "bg-accent text-muted-foreground")}>
+             <Icon className="h-4 w-4" />
           </div>
           <div className="min-w-0">
-             <p className="text-xs font-bold text-foreground truncate">{label}</p>
+             <p className={cn("text-xs font-bold truncate transition-colors", active ? "text-foreground" : "text-muted-foreground")}>{label}</p>
              <p className="text-[10px] text-muted-foreground truncate">{desc}</p>
           </div>
        </div>
-       <span className="text-[9px] font-bold text-emerald-500 bg-emerald-500/10 px-1.5 py-0.5 rounded shrink-0 font-mono">
-         Active
-       </span>
+       
+       <div className="flex items-center gap-2 shrink-0">
+          <span className={cn(
+            "text-[9px] font-bold uppercase tracking-wider hidden sm:block transition-colors",
+            active ? "text-emerald-500" : "text-muted-foreground"
+          )}>
+            {active ? "Active" : "Inactive"}
+          </span>
+          <div className={cn(
+            "w-9 h-5 rounded-full p-0.5 transition-colors relative flex items-center shadow-inner",
+            active ? "bg-primary" : "bg-muted"
+          )}>
+            <motion.div 
+              layout
+              className="w-4 h-4 bg-background rounded-full shadow-sm"
+              animate={{ x: active ? 16 : 0 }}
+              transition={{ type: "spring", stiffness: 500, damping: 30 }}
+            />
+          </div>
+       </div>
     </div>
   );
 }

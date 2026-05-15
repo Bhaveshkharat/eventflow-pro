@@ -359,7 +359,7 @@ export default function DedicatedRolesWorkspace() {
             <motion.div
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               onClick={() => setIsRoleModalOpen(false)}
-              className="absolute inset-0 bg-neutral-950/85 backdrop-blur-xl"
+              className="absolute inset-0 bg-black/60 backdrop-blur-xl"
             />
 
             <motion.div
@@ -367,7 +367,7 @@ export default function DedicatedRolesWorkspace() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.96, y: 20 }}
               transition={{ type: "spring", damping: 24, stiffness: 300 }}
-              className="relative w-full max-w-3xl bg-neutral-900/95 border-2 border-primary/40 rounded-2xl shadow-[0_0_50px_-12px_rgba(var(--primary),0.3)] z-10 overflow-hidden flex flex-col max-h-[90vh]"
+              className="relative w-full max-w-3xl bg-background border-2 border-primary/40 rounded-2xl shadow-[0_0_50px_-12px_rgba(var(--primary),0.3)] z-10 overflow-hidden flex flex-col max-h-[90vh]"
             >
               {/* Premium Header Bar with distinct vibrant contrast */}
               <div className="flex items-center justify-between px-6 py-5 bg-gradient-to-r from-primary/30 via-background/90 to-background/90 border-b border-primary/30 backdrop-blur-md">
@@ -387,7 +387,7 @@ export default function DedicatedRolesWorkspace() {
 
               <form onSubmit={handleCreateCustomRoleSubmit} className="p-6 space-y-6 overflow-y-auto no-scrollbar flex-1">
                 {/* 1. Highly visible Input structures */}
-                <div className="grid sm:grid-cols-2 gap-4 bg-white/[0.02] p-4 rounded-xl border border-white/5">
+                <div className="grid sm:grid-cols-2 gap-4 bg-accent/20 p-4 rounded-xl border border-border/40">
                   <div>
                     <label className="text-xs font-extrabold text-foreground uppercase tracking-wider block mb-1.5 flex items-center gap-1.5">
                       <Tag className="h-3.5 w-3.5 text-primary" /> Role Name *
@@ -460,10 +460,10 @@ export default function DedicatedRolesWorkspace() {
                             "p-4 rounded-xl space-y-3.5 transition-all relative overflow-hidden",
                             isAdminSec 
                               ? "bg-emerald-500/10 border-2 border-emerald-500/30" 
-                              : "bg-white/[0.04] border border-white/10"
+                              : "bg-accent/30 border border-border/60"
                           )}
                         >
-                          <div className="flex items-start justify-between gap-3 pb-3 border-b border-white/10 relative z-10">
+                          <div className="flex items-start justify-between gap-3 pb-3 border-b border-border/60 relative z-10">
                             <div className="min-w-0">
                               <div className="flex items-center gap-2">
                                 <h4 className="text-xs font-extrabold text-foreground tracking-tight">{sec.title}</h4>
@@ -534,7 +534,7 @@ export default function DedicatedRolesWorkspace() {
                   </div>
                 </div>
 
-                <div className="pt-4 border-t border-white/10 flex items-center justify-end gap-3">
+                <div className="pt-4 border-t border-border/60 flex items-center justify-end gap-3">
                   <button
                     type="button"
                     onClick={() => setIsRoleModalOpen(false)}

@@ -1,6 +1,6 @@
 import React from "react";
 import { events } from "@/data/mock";
-import EventDetailClient from "./EventDetailClient";
+import BookStallClient from "./BookStallClient";
 
 export function generateStaticParams() {
   return events.map((event) => ({
@@ -9,5 +9,5 @@ export function generateStaticParams() {
 }
 
 export default function Page({ params }: { params: Promise<{ eventId: string }> }) {
-  return <EventDetailClient params={params} />;
+  return <BookStallClient params={params} />;
 }

@@ -149,7 +149,8 @@
   body {
     background-color: var(--color-background);
     background-image: var(--gradient-mesh);
-    background-attachment: fixed;
+    /* Removed background-attachment: fixed for performance */
+    background-size: cover;
     color: var(--color-foreground);
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
     -webkit-font-smoothing: antialiased;
@@ -160,18 +161,20 @@
 @layer utilities {
   .glass {
     background: var(--glass-bg);
-    backdrop-filter: blur(24px) saturate(160%);
-    -webkit-backdrop-filter: blur(24px) saturate(160%);
+    backdrop-filter: blur(12px) saturate(140%);
+    -webkit-backdrop-filter: blur(12px) saturate(140%);
     border: 1px solid var(--glass-border);
     background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.05), transparent);
+    transform: translateZ(0); /* Hardware acceleration */
   }
 
   .glass-strong {
     background: color-mix(in oklab, var(--card) 85%, transparent);
-    backdrop-filter: blur(32px) saturate(180%);
-    -webkit-backdrop-filter: blur(32px) saturate(180%);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
     border: 1px solid var(--glass-border);
     background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.1), transparent);
+    transform: translateZ(0); /* Hardware acceleration */
   }
 
   .gradient-text {

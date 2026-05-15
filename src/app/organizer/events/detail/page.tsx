@@ -1,7 +1,8 @@
 "use client";
 
-import React, { use, useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, Suspense } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
    Users, DollarSign, BarChart3, Clock,
@@ -11,7 +12,8 @@ import {
    Layers, Building2, Truck, Hotel, Plane,
    Search, Mic2, ShieldCheck, Mail, Copy, 
    TrendingUp, CheckCircle2, FileText,
-   Sparkles, Zap, Activity, Phone, Eye, X
+   Sparkles, Zap, Activity, Phone, Eye, X,
+   ClipboardList, UserPlus, Filter as FilterIcon
 } from "lucide-react";
 import { DashboardShell } from "@/components/layout/DashboardShell";
 import { GlassCard } from "@/components/ui-ext/GlassCard";
@@ -21,8 +23,15 @@ import { events } from "@/data/mock";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { getPersistedPartners } from "@/lib/partnersStore";
+import { 
+  getPersistedExhibitorRequests, 
+  assignVendorToRequest, 
+  MOCK_VENDORS, 
+  ExhibitorRequest,
+  Vendor
+} from "@/lib/servicesStore";
 
-type TabKey = "analytics" | "participants" | "partners";
+type TabKey = "analytics" | "participants" | "partners" | "requests";
 type ParticipantRole = "Exhibitor" | "Visitor" | "Delegate" | "Speaker";
 type PartnerService = "Vendor" | "Hotel" | "Travel";
 
@@ -98,8 +107,157 @@ const CHART_METRICS_DATA = [
   { day: "Sun", registers: 1280, yield: "$192,000", x: 650, y: 63.5 },
 ];
 
-export default function EventDetail({ params }: { params: Promise<{ eventId: string }> }) {
-   const { eventId } = use(params);
+export default function EventDetail() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-muted-foreground">Loading event details...</div>}>
+      <EventDetailContent />
+    </Suspense>
+  );
+}
+
+const ServiceRequestsTab = ({ eventId }: { eventId: string }) => {
+   const [requests, setRequests] = useState<ExhibitorRequest[]>([]);
+   const [assigningReq, setAssigningReq] = useState<ExhibitorRequest | null>(null);
+   const [selectedVendorId, setSelectedVendorId] = useState<string>("");
+
+   useEffect(() => {
+      setRequests(getPersistedExhibitorRequests().filter(r => r.eventId === eventId));
+   }, [eventId]);
+
+   const handleAssign = () => {
+      if (!assigningReq || !selectedVendorId) return;
+      assignVendorToRequest(assigningReq.id, selectedVendorId);
+      setRequests(prev => prev.map(r => r.id === assigningReq.id ? { ...r, status: "Assigned", assignedVendorId: selectedVendorId } : r));
+      setAssigningReq(null);
+      setSelectedVendorId("");
+      toast.success("Vendor assigned successfully!");
+   };
+
+   const unassignedCount = requests.filter(r => r.status === "Unassigned" || r.status === "Pending").length;
+
+   return (
+      <div className="space-y-6 animate-in fade-in duration-500">
+         <div className="flex items-center justify-between p-4 rounded-xl glass border border-border/40">
+            <div>
+               <h3 className="text-sm font-black uppercase tracking-widest text-foreground">Exhibitor Service Requests</h3>
+               <p className="text-[10px] text-muted-foreground mt-1">Manage unassigned and custom service requests from exhibitors.</p>
+            </div>
+            <div className="px-3 py-1 rounded-lg bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest border border-primary/20">
+               {unassignedCount} Action Items
+            </div>
+         </div>
+
+         <div className="grid gap-4">
+            {requests.length === 0 ? (
+               <div className="py-20 text-center glass rounded-3xl border border-dashed border-border opacity-40">
+                  <ClipboardList className="h-12 w-12 mx-auto mb-4" />
+                  <p className="text-xs font-bold">No service requests for this event yet.</p>
+               </div>
+            ) : (
+               requests.map(req => (
+                  <GlassCard key={req.id} className="p-5 border-border/40 flex flex-col md:flex-row md:items-center justify-between gap-4" hover={false}>
+                     <div className="flex items-center gap-4 min-w-0 flex-1">
+                        <div className={cn("h-12 w-12 rounded-2xl flex items-center justify-center shrink-0", req.status === "Unassigned" || req.status === "Pending" ? "bg-amber-500/10 text-amber-500" : "bg-primary/10 text-primary")}>
+                           {req.category === "Custom" ? <Sparkles className="h-6 w-6" /> : <Settings className="h-6 w-6" />}
+                        </div>
+                        <div className="min-w-0">
+                           <div className="flex items-center gap-2 mb-1">
+                              <span className="text-[9px] font-black uppercase text-primary tracking-widest">{req.category}</span>
+                              <span className="text-[10px] text-muted-foreground font-mono">@{req.exhibitorName} · Booth {req.boothNumber}</span>
+                           </div>
+                           <h4 className="text-sm font-black text-foreground truncate">{req.title}</h4>
+                        </div>
+                     </div>
+
+                     <div className="flex items-center gap-6 shrink-0 border-t md:border-t-0 pt-4 md:pt-0 border-border/40">
+                        <div className="text-left md:text-right">
+                           <p className="text-[9px] font-bold text-muted-foreground uppercase">Status</p>
+                           <span className={cn("text-[10px] font-black uppercase", req.status === "Unassigned" || req.status === "Pending" ? "text-amber-500" : "text-emerald-500")}>
+                              {req.status}
+                           </span>
+                        </div>
+                        
+                        {(req.status === "Unassigned" || req.status === "Pending") ? (
+                           <button 
+                             onClick={() => setAssigningReq(req)}
+                             className="px-4 py-2 rounded-lg bg-primary text-white text-[10px] font-black uppercase tracking-widest shadow-glow-sm hover:scale-105 transition-all flex items-center gap-2"
+                           >
+                              <UserPlus className="h-3.5 w-3.5" /> Assign Vendor
+                           </button>
+                        ) : (
+                           <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-accent/40 border border-border">
+                              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                              <span className="text-[10px] font-bold text-muted-foreground">Managed by {MOCK_VENDORS.find(v => v.id === req.assignedVendorId)?.name || "Vendor"}</span>
+                           </div>
+                        )}
+                     </div>
+                  </GlassCard>
+               ))
+            )}
+         </div>
+
+         {/* Assignment Modal */}
+         <AnimatePresence>
+            {assigningReq && (
+               <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setAssigningReq(null)} className="absolute inset-0 bg-neutral-950/80 backdrop-blur-sm" />
+                  <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="relative w-full max-w-md bg-background border border-border rounded-3xl shadow-2xl overflow-hidden">
+                     <div className="p-6 border-b border-border bg-accent/5 flex items-center justify-between">
+                        <h3 className="text-sm font-black uppercase tracking-widest">Assign Vendor</h3>
+                        <button onClick={() => setAssigningReq(null)} className="h-8 w-8 rounded-lg hover:bg-accent flex items-center justify-center"><X className="h-4 w-4" /></button>
+                     </div>
+                     <div className="p-8 space-y-6">
+                        <div>
+                           <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2">Request Details</p>
+                           <p className="text-sm font-bold text-foreground">{assigningReq.title}</p>
+                           <p className="text-xs text-muted-foreground mt-1">Exhibitor: {assigningReq.exhibitorName} · Category: {assigningReq.category}</p>
+                        </div>
+
+                        <div className="space-y-3">
+                           <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1 flex items-center gap-2">
+                              <FilterIcon className="h-3 w-3 text-primary" /> Qualified Partners
+                           </p>
+                           {MOCK_VENDORS.map(vendor => {
+                              const isQualified = vendor.specialties.includes(assigningReq.category) || assigningReq.category === "Custom";
+                              return (
+                                 <button 
+                                   key={vendor.id} 
+                                   onClick={() => setSelectedVendorId(vendor.id)}
+                                   className={cn(
+                                     "w-full p-4 rounded-2xl border-2 flex items-center justify-between transition-all text-left",
+                                     selectedVendorId === vendor.id ? "border-primary bg-primary/5" : "border-border hover:border-primary/20 bg-accent/5",
+                                     !isQualified && "opacity-50"
+                                   )}
+                                 >
+                                    <div>
+                                       <p className="text-xs font-black text-foreground">{vendor.name}</p>
+                                       <div className="flex gap-1 mt-1">
+                                          {vendor.specialties.map(s => <span key={s} className="text-[8px] font-bold px-1 rounded bg-background border border-border">{s}</span>)}
+                                       </div>
+                                    </div>
+                                    {selectedVendorId === vendor.id && <Check className="h-4 w-4 text-primary" />}
+                                    {!isQualified && <span className="text-[8px] font-black text-rose-500 uppercase">Specialty Mismatch</span>}
+                                 </button>
+                              );
+                           })}
+                        </div>
+                     </div>
+                     <div className="p-6 border-t border-border bg-accent/5">
+                        <GradientButton disabled={!selectedVendorId} onClick={handleAssign} className="w-full h-12 uppercase tracking-widest font-black text-xs shadow-glow">
+                           Confirm Assignment
+                        </GradientButton>
+                     </div>
+                  </motion.div>
+               </div>
+            )}
+         </AnimatePresence>
+      </div>
+   );
+};
+
+function EventDetailContent() {
+   const searchParams = useSearchParams();
+   const eventId = searchParams.get("id");
    const event = events.find(e => e.id === eventId) || events[0];
 
    // Main interactive tabs router state
@@ -235,12 +393,13 @@ export default function EventDetail({ params }: { params: Promise<{ eventId: str
          {/* PREMIUM GLASS NAV CONTROLLER TABS */}
          <div className="flex items-center justify-between gap-4 p-2 rounded-2xl glass border border-border/60 mb-8 bg-background/20 backdrop-blur-md overflow-x-auto no-scrollbar">
             <div className="flex items-center gap-1.5 min-w-0">
-               {(["analytics", "participants", "partners"] as TabKey[]).map(tKey => {
+               {(["analytics", "participants", "partners", "requests"] as TabKey[]).map(tKey => {
                   const isActive = activeTab === tKey;
                   const labelMap = {
                     analytics: "📊 Live Analytics Overview",
                     participants: `👥 Registered Participants (${EVENT_PARTICIPANTS.length})`,
-                    partners: `🤝 Assigned Event Partners (${EVENT_PARTNERS.length})`
+                    partners: `🤝 Assigned Event Partners (${EVENT_PARTNERS.length})`,
+                    requests: `📋 Service Requests (${getPersistedExhibitorRequests().filter(r => r.eventId === eventId).length})`
                   };
                   return (
                     <button
@@ -280,6 +439,8 @@ export default function EventDetail({ params }: { params: Promise<{ eventId: str
               exit={{ opacity: 0, y: -15 }}
               transition={{ duration: 0.25 }}
             >
+               {activeTab === "requests" && <ServiceRequestsTab eventId={eventId || ""} />}
+
                {/* ─── TAB 1: ANALYTICS VIEWPORT (Modern Sleek Light/Dark Optimized) ───── */}
                {activeTab === "analytics" && (
                   <div className="space-y-8">

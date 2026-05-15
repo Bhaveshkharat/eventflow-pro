@@ -320,7 +320,7 @@ export default function DedicatedUsersWorkspace() {
             <motion.div
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               onClick={() => setIsUserModalOpen(false)}
-              className="absolute inset-0 bg-neutral-950/85 backdrop-blur-xl"
+              className="absolute inset-0 bg-black/60 backdrop-blur-xl"
             />
 
             <motion.div
@@ -328,7 +328,7 @@ export default function DedicatedUsersWorkspace() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.96, y: 20 }}
               transition={{ type: "spring", damping: 24, stiffness: 300 }}
-              className="relative w-full max-w-xl bg-neutral-900/95 border-2 border-primary/40 rounded-2xl shadow-[0_0_50px_-12px_rgba(var(--primary),0.3)] z-10 overflow-hidden flex flex-col max-h-[90vh]"
+              className="relative w-full max-w-xl bg-background border-2 border-primary/40 rounded-2xl shadow-[0_0_50px_-12px_rgba(var(--primary),0.3)] z-10 overflow-hidden flex flex-col max-h-[90vh]"
             >
               <div className="flex items-center justify-between px-6 py-5 bg-gradient-to-r from-primary/30 via-background/90 to-background/90 border-b border-primary/30 backdrop-blur-md">
                 <div>
@@ -346,7 +346,7 @@ export default function DedicatedUsersWorkspace() {
               </div>
 
               <form onSubmit={handleProvisionStaffUserSubmit} className="p-6 space-y-5 overflow-y-auto no-scrollbar flex-1">
-                <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 space-y-4">
+                <div className="p-4 rounded-xl bg-accent/20 border border-border/40 space-y-4">
                   <div>
                     <label className="text-xs font-extrabold text-foreground uppercase tracking-wider block mb-2 flex items-center gap-1.5">
                       <Tag className="h-3.5 w-3.5 text-primary" /> Staff Account Details
@@ -413,7 +413,7 @@ export default function DedicatedUsersWorkspace() {
                   </div>
                 </div>
 
-                <div className="p-4 rounded-xl bg-white/[0.04] border border-white/10 space-y-2">
+                <div className="p-4 rounded-xl bg-accent/30 border border-border/60 space-y-2">
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-extrabold text-foreground uppercase tracking-wider block">
                       Assign Staff Role *
@@ -440,7 +440,7 @@ export default function DedicatedUsersWorkspace() {
                   </select>
                 </div>
 
-                <div className="pt-4 border-t border-white/10 flex items-center justify-end gap-3">
+                <div className="pt-4 border-t border-border/60 flex items-center justify-end gap-3">
                   <button
                     type="button"
                     onClick={() => setIsUserModalOpen(false)}

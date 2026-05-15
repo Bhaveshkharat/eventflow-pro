@@ -38,7 +38,29 @@ export default function RegisterFlow() {
 
   const handleNext = () => {
     if (validate()) {
-      if (step === steps.length - 2) toast.success("Registration complete!");
+      if (step === steps.length - 2) {
+        // Finalize registration: Save mock ticket
+        const selectedEvent = events.find(e => e.id === formData.eventId);
+        const selectedTicket = tickets.find(t => t.id === formData.ticketId);
+        
+        const newTicket = {
+          id: `TKT-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
+          eventId: formData.eventId,
+          eventName: selectedEvent?.title || "Global Event",
+          passTier: selectedTicket?.name || "Standard",
+          pricePaid: `$${selectedTicket?.price || "99"}`,
+          paymentStatus: "Payment Approved",
+          attendeeName: formData.name,
+          qrCode: `EVT-${formData.eventId}-SIG-${Math.random().toString(36).substr(2, 6).toUpperCase()}`,
+          venueDistance: "0.8 miles",
+          inclusions: selectedTicket?.perks || ["Event Access", "Lunch"]
+        };
+
+        const existing = JSON.parse(localStorage.getItem("eventflow_pro_user_bookings_v1") || "[]");
+        localStorage.setItem("eventflow_pro_user_bookings_v1", JSON.stringify([newTicket, ...existing]));
+        
+        toast.success("Registration complete!");
+      }
       setStep(s => s + 1);
     } else {
       toast.error("Please fix the errors");

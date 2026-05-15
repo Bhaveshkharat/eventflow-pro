@@ -15,16 +15,39 @@ export type Event = {
   priceFrom: number;
   featured?: boolean;
   tags: string[];
+  stallConfig?: {
+    rows: number;
+    cols: number;
+    stallSize: string; // e.g. "3x3m"
+    premiumPrice: number;
+    regularPrice: number;
+    cornerPrice: number;
+    inclusions: string[];
+  };
+  commissionPercent?: number; // Organizer's commission (e.g. 13 for 13%)
+  assignedPartnerIds?: string[]; // IDs of assigned Hotel/Travel partners
 };
 
 const img = (seed: string) =>
   `https://images.unsplash.com/${seed}?auto=format&fit=crop&w=1600&q=70`;
 
 export const events: Event[] = [
-  { id: "techsummit-26", title: "TechSummit 2026", tagline: "Where the future is built.", category: "Technology", date: "2026-06-12", endDate: "2026-06-14", city: "San Francisco", country: "USA", venue: "Moscone Center", image: img("photo-1540575467063-178a50c2df87"), attendees: 18420, exhibitors: 320, rating: 4.9, priceFrom: 299, featured: true, tags: ["AI", "Cloud", "Devtools"] },
-  { id: "designweek-26", title: "Design Week Milano", tagline: "Form meets function.", category: "Design", date: "2026-04-08", endDate: "2026-04-13", city: "Milan", country: "Italy", venue: "Fiera Milano", image: img("photo-1505373877841-8d25f7d46678"), attendees: 9800, exhibitors: 410, rating: 4.8, priceFrom: 180, featured: true, tags: ["Design", "Architecture"] },
+  { id: "techsummit-26", title: "TechSummit 2026", tagline: "Where the future is built.", category: "Technology", date: "2026-06-12", endDate: "2026-06-14", city: "San Francisco", country: "USA", venue: "Moscone Center", image: img("photo-1540575467063-178a50c2df87"), attendees: 18420, exhibitors: 320, rating: 4.9, priceFrom: 299, featured: true, tags: ["AI", "Cloud", "Devtools"], 
+    stallConfig: {
+      rows: 5,
+      cols: 8,
+      stallSize: "3x3m",
+      premiumPrice: 45000,
+      regularPrice: 25000,
+      cornerPrice: 32000,
+      inclusions: ["1 Executive Table", "2 Premium Chairs", "5A Electrical Point", "Fascia Board Name"]
+    },
+    commissionPercent: 13,
+    assignedPartnerIds: ["h1", "h3", "t1", "t2"]
+  },
+  { id: "designweek-26", title: "Design Week Milano", tagline: "Form meets function.", category: "Design", date: "2026-04-08", endDate: "2026-04-13", city: "Milan", country: "Italy", venue: "Fiera Milano", image: img("photo-1505373877841-8d25f7d46678"), attendees: 9800, exhibitors: 410, rating: 4.8, priceFrom: 180, featured: true, tags: ["Design", "Architecture"], assignedPartnerIds: ["h2", "t3"] },
   { id: "fintech-asia", title: "FinTech Asia", tagline: "Money, reimagined.", category: "Finance", date: "2026-09-22", endDate: "2026-09-24", city: "Singapore", country: "Singapore", venue: "Marina Bay Sands", image: img("photo-1518770660439-4636190af475"), attendees: 12500, exhibitors: 280, rating: 4.7, priceFrom: 450, featured: true, tags: ["FinTech", "Web3"] },
-  { id: "healthx-26", title: "HealthX Berlin", tagline: "Healthcare, evolved.", category: "Healthcare", date: "2026-05-18", endDate: "2026-05-20", city: "Berlin", country: "Germany", venue: "Messe Berlin", image: img("photo-1576091160399-112ba8d25d1d"), attendees: 7200, exhibitors: 190, rating: 4.6, priceFrom: 220, tags: ["BioTech", "MedTech"] },
+  { id: "healthx-berlin", title: "HealthX Berlin", tagline: "Healthcare, evolved.", category: "Healthcare", date: "2026-05-18", endDate: "2026-05-20", city: "Berlin", country: "Germany", venue: "Messe Berlin", image: img("photo-1576091160399-112ba8d25d1d"), attendees: 7200, exhibitors: 190, rating: 4.6, priceFrom: 220, tags: ["BioTech", "MedTech"] },
   { id: "greenexpo-26", title: "Green Future Expo", tagline: "Sustainability for tomorrow.", category: "Sustainability", date: "2026-07-03", endDate: "2026-07-05", city: "Amsterdam", country: "Netherlands", venue: "RAI Amsterdam", image: img("photo-1518837695005-2083093ee35b"), attendees: 6500, exhibitors: 150, rating: 4.5, priceFrom: 120, tags: ["ClimateTech"] },
   { id: "gameconf-26", title: "GameConf Tokyo", tagline: "Play the next decade.", category: "Gaming", date: "2026-11-10", endDate: "2026-11-12", city: "Tokyo", country: "Japan", venue: "Tokyo Big Sight", image: img("photo-1542751371-adc38448a05e"), attendees: 22000, exhibitors: 360, rating: 4.9, priceFrom: 199, tags: ["Gaming", "Esports"] },
   { id: "edusummit", title: "EduSummit Dubai", tagline: "Learning without limits.", category: "Education", date: "2026-03-15", endDate: "2026-03-17", city: "Dubai", country: "UAE", venue: "World Trade Centre", image: img("photo-1523580494863-6f3031224c94"), attendees: 5800, exhibitors: 140, rating: 4.4, priceFrom: 99, tags: ["EdTech"] },
@@ -143,4 +166,11 @@ export const settlements: Settlement[] = [
   { id: "set1", recipient: "Lumen Tech", role: "Exhibitor", amount: 4500, date: "2026-07-01", status: "Paid" },
   { id: "set2", recipient: "Grand Marquise", role: "Hotel Agent", amount: 12400, date: "2026-07-15", status: "Pending" },
   { id: "set3", recipient: "SkyTravel", role: "Travel Agent", amount: 8200, date: "2026-07-15", status: "Pending" },
+];
+
+export type Organizer = { id: string; name: string; email: string; status: "Pro" | "Enterprise" | "Trial"; events: number; revenue: number; logo: string; joinedDate: string };
+export const superAdminOrganizers: Organizer[] = [
+  { id: "org1", name: "Lumen Events", email: "contact@lumenevents.com", status: "Pro", events: 12, revenue: 42000, logo: "https://api.dicebear.com/7.x/shapes/svg?seed=Lumen", joinedDate: "2024-01-15" },
+  { id: "org2", name: "Orbit Expos", email: "admin@orbitexpos.com", status: "Enterprise", events: 45, revenue: 184000, logo: "https://api.dicebear.com/7.x/shapes/svg?seed=Orbit", joinedDate: "2023-11-02" },
+  { id: "org3", name: "Studio Co", email: "hello@studioco.io", status: "Trial", events: 2, revenue: 850, logo: "https://api.dicebear.com/7.x/shapes/svg?seed=Studio", joinedDate: "2024-05-10" },
 ];

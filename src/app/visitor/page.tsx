@@ -1,14 +1,15 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Ticket, MapPin, Download, ChevronRight, 
   Hotel, Plane, QrCode, ShieldCheck, 
   CheckCircle2, Loader2, Award, FileText, 
-  Smartphone, X, Check, ArrowUpRight, Calendar
+  Smartphone, X, Check, ArrowUpRight, Calendar, ArrowRight
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { DashboardShell } from "@/components/layout/DashboardShell";
 import { GlassCard } from "@/components/ui-ext/GlassCard";
 import { GradientButton } from "@/components/ui-ext/GradientButton";
@@ -17,36 +18,35 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 export default function VisitorDashboard() {
+  const router = useRouter();
+
   // ── BOOKED TICKETS EXCLUSIVE STATE ──
   // Contains passes successfully authorized post-payment settlement
-  const [bookedTickets, setBookedTickets] = useState([
-    {
-      id: "tk-active-1",
-      eventId: "techsummit-26",
-      passTier: "Pro Access Delegate",
-      pricePaid: "$450",
-      purchaseDate: "May 10, 2026",
-      qrCode: "QR_PAYLOAD_TECHSUMMIT_PRO_991823",
-      attendeeName: "Olivia Bennett",
-      paymentStatus: "Payment Approved",
-      status: "Slot Booked & Verified",
-      venueDistance: "0.2 miles from Center",
-      inclusions: ["Expo Floor Access", "Mainstage Keynotes", "Pro Lounge Mixer"]
-    },
-    {
-      id: "tk-active-2",
-      eventId: "designweek-26",
-      passTier: "VIP Executive Track",
-      pricePaid: "$899",
-      purchaseDate: "April 22, 2026",
-      qrCode: "QR_PAYLOAD_DESIGNWEEK_VIP_440192",
-      attendeeName: "Olivia Bennett",
-      paymentStatus: "Payment Approved",
-      status: "Slot Booked & Verified",
-      venueDistance: "Direct Connected Hub",
-      inclusions: ["All-Access Access", "Parametric Hands-on Workshops", "Exclusive Keynote Seating"]
+   // Contains passes successfully authorized post-payment settlement
+  const [bookedTickets, setBookedTickets] = useState<any[]>([]);
+  const [showLogisticsPromo, setShowLogisticsPromo] = useState(false);
+  const [promoEvent, setPromoEvent] = useState<any>(null);
+
+  useEffect(() => {
+    const raw = localStorage.getItem("eventflow_pro_user_bookings_v1");
+    if (raw) {
+       const tickets = JSON.parse(raw);
+       setBookedTickets(tickets);
+       
+       // Show promo for the most recent booking if not skipped
+       if (tickets.length > 0) {
+          const latest = tickets[0];
+          const skip = localStorage.getItem(`eventflow_pro_visitor_skip_promo_${latest.eventId}`);
+          if (skip !== "true") {
+             const ev = events.find(e => e.id === latest.eventId);
+             if (ev) {
+               setPromoEvent(ev);
+               setShowLogisticsPromo(true);
+             }
+          }
+       }
     }
-  ]);
+  }, []);
 
   // View wallet state controller
   const [previewTicketObj, setPreviewTicketObj] = useState<any | null>(null);
@@ -86,8 +86,11 @@ export default function VisitorDashboard() {
       subtitle="Access guaranteed attendance keycards, real-time dynamic turnstile QR strings, and utilize personalized corporate hotel and shuttle blocks."
     >
       {/* ── TOP LEVEL BANNER: VOLUNTEER SCAN GATE TRIGGER ── */}
-      <div className="p-4 rounded-2xl glass border border-primary/30 bg-primary/5 mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-start sm:items-center gap-3">
+      <div className="p-4 rounded-2xl glass border border-primary/30 bg-primary/5 mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative overflow-hidden">
+        <div className="absolute top-0 right-0 p-2 opacity-10">
+           <Smartphone className="h-20 w-20 rotate-12" />
+        </div>
+        <div className="flex items-start sm:items-center gap-3 relative z-10">
           <div className="h-10 w-10 rounded-xl bg-primary text-white flex items-center justify-center shrink-0 shadow-glow-sm">
             <Smartphone className="h-5 w-5" />
           </div>
@@ -111,7 +114,7 @@ export default function VisitorDashboard() {
             setScanResultState("idle");
           }} 
           size="sm" 
-          className="shrink-0 text-xs h-9 px-4"
+          className="shrink-0 text-xs h-9 px-4 relative z-10"
         >
           Launch Turnstile Scanner
         </GradientButton>
@@ -156,7 +159,7 @@ export default function VisitorDashboard() {
             </div>
           </div>
         ) : (
-          <div className="grid lg:grid-cols-2 gap-6">
+          <div className="grid lg:grid-cols-2 gap-8">
             {bookedTickets.map((tk) => {
               const matchedEvent = events.find(e => e.id === tk.eventId);
               return (
@@ -165,97 +168,106 @@ export default function VisitorDashboard() {
                   layout
                   initial={{ opacity: 0, scale: 0.98 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className="rounded-2xl glass border border-border hover:border-primary/40 transition-all p-6 flex flex-col justify-between relative overflow-hidden group shadow-sm"
+                  className="rounded-[32px] glass border border-border hover:border-primary/40 transition-all flex flex-col relative overflow-hidden group shadow-lg"
                 >
-                  {/* Top specific badge metadata */}
-                  <div>
-                    <div className="flex items-start justify-between gap-3 mb-4">
+                  {/* Decorative background image for the card */}
+                  <div className="absolute inset-0 opacity-[0.03] group-hover:opacity-[0.05] transition-opacity pointer-events-none">
+                     <img src={matchedEvent?.image} className="w-full h-full object-cover grayscale" alt="" />
+                  </div>
+
+                  <div className="p-8 relative z-10">
+                    <div className="flex items-start justify-between gap-4 mb-6">
                       <div className="min-w-0">
-                        <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                          <span className="px-2 py-0.2 rounded text-[9px] font-bold uppercase tracking-wider bg-primary/10 text-primary border border-primary/20 font-mono">
+                        <div className="flex items-center gap-2 mb-3">
+                          <span className="px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-primary text-white shadow-glow-sm">
                             {tk.passTier}
                           </span>
-                          <span className="px-2 py-0.2 rounded text-[9px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 font-mono flex items-center gap-1">
-                            <CheckCircle2 className="h-2.5 w-2.5 stroke-[3]" /> {tk.paymentStatus}
+                          <span className="px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 flex items-center gap-1">
+                            <CheckCircle2 className="h-3 w-3 stroke-[3]" /> {tk.paymentStatus}
                           </span>
                         </div>
 
-                        <h4 className="text-lg font-bold text-foreground tracking-tight truncate group-hover:text-primary transition-colors">
+                        <h4 className="text-2xl font-black text-foreground tracking-tight leading-tight group-hover:text-primary transition-colors">
                           {matchedEvent ? matchedEvent.title : "Global Summit Scope"}
                         </h4>
                         
-                        <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
-                          <span className="flex items-center gap-1 font-medium text-foreground/80">
-                            <MapPin className="h-3 w-3 text-primary shrink-0" /> {matchedEvent?.city || "San Francisco"}
+                        <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground font-bold uppercase tracking-widest">
+                          <span className="flex items-center gap-1.5">
+                            <MapPin className="h-4 w-4 text-primary shrink-0" /> {matchedEvent?.city || "San Francisco"}
                           </span>
-                          <span>·</span>
-                          <span className="text-[11px] font-mono text-muted-foreground">Proximity: {tk.venueDistance}</span>
+                          <span className="text-primary/40">/</span>
+                          <span>{matchedEvent?.date || "TBD"}</span>
                         </div>
                       </div>
 
                       {/* View full QR badge shortcut button */}
                       <button 
                         onClick={() => setPreviewTicketObj(tk)}
-                        className="h-11 w-11 rounded-xl bg-accent/40 border border-border grid place-items-center text-foreground hover:bg-primary hover:text-white hover:border-primary transition-all shrink-0"
+                        className="h-14 w-14 rounded-2xl bg-accent/40 border border-border grid place-items-center text-foreground hover:bg-primary hover:text-white hover:border-primary transition-all shrink-0 shadow-sm"
                         title="Display Secure Gateway Key"
                       >
-                        <QrCode className="h-4.5 w-4.5" />
+                        <QrCode className="h-6 w-6" />
                       </button>
                     </div>
 
-                    <div className="bg-accent/10 p-3 rounded-xl border border-border/60 text-xs text-muted-foreground space-y-1.5 mb-5">
-                      <div className="flex justify-between font-mono">
-                        <span>Attendee Scoped:</span>
-                        <span className="font-bold text-foreground">{tk.attendeeName}</span>
-                      </div>
-                      <div className="flex justify-between font-mono min-w-0">
-                        <span>Gateway Token:</span>
-                        <span className="text-primary truncate block font-bold max-w-[180px]">{tk.qrCode}</span>
-                      </div>
+                    <div className="grid grid-cols-2 gap-4 mb-8">
+                       <div className="p-4 rounded-2xl bg-accent/10 border border-border/40">
+                          <p className="text-[9px] font-black uppercase text-muted-foreground mb-1 tracking-widest">Attendee</p>
+                          <p className="text-sm font-black text-foreground truncate">{tk.attendeeName}</p>
+                       </div>
+                       <div className="p-4 rounded-2xl bg-accent/10 border border-border/40">
+                          <p className="text-[9px] font-black uppercase text-muted-foreground mb-1 tracking-widest">Gateway Token</p>
+                          <p className="text-sm font-mono font-black text-primary truncate">{tk.qrCode}</p>
+                       </div>
                     </div>
 
                     {/* ── INTEGRATED COMPANION SUITE: HOTEL & TRAVEL TRIGGERS ── */}
-                    <div className="space-y-2 pt-2 border-t border-border/40">
-                      <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground block">
-                        Assigned Proximity Companion Services
-                      </span>
+                    <div className="space-y-3 pt-6 border-t border-border/40">
+                      <div className="flex items-center justify-between">
+                         <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">
+                           Logistics Partners
+                         </span>
+                         <span className="text-[9px] font-bold text-primary flex items-center gap-1">
+                            <ShieldCheck className="h-3 w-3" /> EventFlow Verified
+                         </span>
+                      </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {/* Hotel Recommendation Block */}
-                        <div className="p-3 rounded-xl bg-background border border-border flex flex-col justify-between">
+                        <div className="p-4 rounded-2xl bg-background/50 border border-border flex flex-col justify-between hover:bg-background transition-all">
                           <div>
-                            <div className="flex items-center gap-1.5 text-xs font-bold text-foreground mb-1">
-                              <Hotel className="h-3.5 w-3.5 text-blue-500 shrink-0" />
-                              <span className="truncate">Need a Hotel?</span>
+                            <div className="flex items-center gap-2 text-xs font-black text-foreground mb-2 uppercase tracking-tight">
+                              <Hotel className="h-4 w-4 text-blue-500 shrink-0" />
+                              <span>Accommodation</span>
                             </div>
-                            <p className="text-[10px] text-muted-foreground line-clamp-2 leading-tight">
-                              Partner API blocks configured near destination corridor. Instant delegate corporate allocations.
+                            <p className="text-[10px] text-muted-foreground font-medium leading-relaxed mb-4">
+                              Exclusive blocks near {matchedEvent?.venue || "venue"}. Save up to 40% with delegate rates.
                             </p>
                           </div>
                           <button 
-                            onClick={() => toast.success(`Hotel agent sub-system instantiated for ${matchedEvent?.title}. Auto-applying pass discounts.`)}
-                            className="mt-3 w-full text-[10px] py-1.5 rounded-lg bg-accent text-foreground font-bold hover:bg-primary hover:text-white transition-colors border border-border/40"
+                            onClick={() => router.push(`/hotels-travel-catalog?filter=hotel&event=${tk.eventId}`)}
+                            className="w-full text-[10px] py-2.5 rounded-xl bg-primary/5 text-primary font-black uppercase tracking-widest hover:bg-primary hover:text-white transition-all border border-primary/20"
                           >
-                            Book Hotel Slot
+                            Book Hotel
                           </button>
                         </div>
 
                         {/* Travel Shuttle Recommendation Block */}
-                        <div className="p-3 rounded-xl bg-background border border-border flex flex-col justify-between">
+                        <div className="p-4 rounded-2xl bg-background/50 border border-border flex flex-col justify-between hover:bg-background transition-all">
                           <div>
-                            <div className="flex items-center gap-1.5 text-xs font-bold text-foreground mb-1">
-                              <Plane className="h-3.5 w-3.5 text-purple-500 shrink-0" />
-                              <span className="truncate">Need Travel Transport?</span>
+                            <div className="flex items-center gap-2 text-xs font-black text-foreground mb-2 uppercase tracking-tight">
+                              <Plane className="h-4 w-4 text-purple-500 shrink-0" />
+                              <span>Transit Hub</span>
                             </div>
-                            <p className="text-[10px] text-muted-foreground line-clamp-2 leading-tight">
-                              Continuous loops routing directly from local incoming flight nodes to target convention locations.
+                            <p className="text-[10px] text-muted-foreground font-medium leading-relaxed mb-4">
+                              Priority shuttle loops from {matchedEvent?.city || "Airport"} directly to the event hall.
                             </p>
                           </div>
                           <button 
-                            onClick={() => toast.success("Transit shuttle manifests successfully synched to user pass identity.")}
-                            className="mt-3 w-full text-[10px] py-1.5 rounded-lg bg-accent text-foreground font-bold hover:bg-purple-500 hover:text-white transition-colors border border-border/40"
+                            onClick={() => router.push(`/hotels-travel-catalog?filter=travel&event=${tk.eventId}`)}
+                            className="w-full text-[10px] py-2.5 rounded-xl bg-purple-500/5 text-purple-600 font-black uppercase tracking-widest hover:bg-purple-500 hover:text-white transition-all border border-purple-500/20"
                           >
-                            Reserve Shuttle Seat
+                            Reserve Seat
                           </button>
                         </div>
                       </div>
@@ -263,13 +275,16 @@ export default function VisitorDashboard() {
                   </div>
 
                   {/* Confirmed Roster Action Footer */}
-                  <div className="mt-5 pt-3 border-t border-border/60 flex items-center justify-between text-xs">
-                    <span className="font-mono text-muted-foreground font-bold">Settled: {tk.pricePaid}</span>
+                  <div className="px-8 py-5 bg-accent/5 border-t border-border/60 flex items-center justify-between">
+                    <div className="flex items-baseline gap-2">
+                       <span className="text-[10px] font-black uppercase text-muted-foreground">Paid:</span>
+                       <span className="text-sm font-black text-foreground">{tk.pricePaid}</span>
+                    </div>
                     <button 
                       onClick={(e) => handleDownloadInvoice(tk, e)}
-                      className="text-muted-foreground hover:text-foreground font-medium flex items-center gap-1 text-[11px]"
+                      className="text-primary hover:text-primary-dark font-black uppercase tracking-widest text-[10px] flex items-center gap-2 group/btn"
                     >
-                      <FileText className="h-3.5 w-3.5" /> Download Pass & Receipt
+                      <Download className="h-4 w-4 group-hover/btn:translate-y-0.5 transition-transform" /> E-Badge & Invoice
                     </button>
                   </div>
                 </motion.div>
@@ -278,6 +293,73 @@ export default function VisitorDashboard() {
           </div>
         )}
       </div>
+
+      {/* LOGISTICS PROMOTION MODAL */}
+      <AnimatePresence>
+        {showLogisticsPromo && promoEvent && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setShowLogisticsPromo(false)}
+              className="absolute inset-0 bg-background/80 backdrop-blur-md"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="w-full max-w-lg relative z-10"
+            >
+              <GlassCard className="p-10 border-primary/30 shadow-2xl relative overflow-hidden" hover={false}>
+                <div className="absolute -top-24 -right-24 w-48 h-48 bg-primary/20 rounded-full blur-3xl" />
+                <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-emerald-500/20 rounded-full blur-3xl" />
+                
+                <div className="text-center relative z-10">
+                  <div className="h-20 w-20 bg-gradient-to-br from-primary to-violet-600 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-glow rotate-3">
+                    <Hotel className="h-10 w-10 text-white" />
+                  </div>
+                  <h2 className="text-3xl font-black tracking-tight text-foreground">Complete Your Trip</h2>
+                  <p className="text-sm text-muted-foreground mt-4 leading-relaxed font-medium">
+                    You've successfully booked your pass for <span className="text-foreground font-black">{promoEvent.title}</span>! 
+                    Would you like to explore exclusive partner hotels and travel facilities near the venue?
+                  </p>
+
+                  <div className="mt-12 space-y-4">
+                    <button 
+                      onClick={() => {
+                        setShowLogisticsPromo(false);
+                        router.push(`/hotels-travel-catalog?event=${promoEvent.id}`);
+                      }}
+                      className="w-full h-16 rounded-2xl bg-primary text-white font-black uppercase tracking-[0.2em] text-[11px] shadow-glow flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-95 transition-all"
+                    >
+                      Explore Logistics <ArrowRight className="h-5 w-5" />
+                    </button>
+                    
+                    <div className="flex gap-3">
+                      <button 
+                        onClick={() => {
+                          setShowLogisticsPromo(false);
+                        }}
+                        className="flex-1 h-12 rounded-xl bg-accent/30 text-[10px] font-black uppercase tracking-widest text-foreground hover:bg-accent/50 transition-all"
+                      >
+                        Maybe Later
+                      </button>
+                      <button 
+                        onClick={() => {
+                          localStorage.setItem(`eventflow_pro_visitor_skip_promo_${promoEvent.id}`, "true");
+                          setShowLogisticsPromo(false);
+                        }}
+                        className="flex-1 h-12 rounded-xl border border-border text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-foreground transition-all"
+                      >
+                        Don't show again
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </GlassCard>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* ── OVERLAY MODAL: EVENT VOLUNTEER TURNSTILE SCANNER TOOL DEMO ── */}
       <AnimatePresence>
