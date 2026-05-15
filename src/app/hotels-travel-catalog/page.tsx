@@ -9,7 +9,7 @@ import {
   ChevronDown, Wifi, Coffee, Car, Shield, X, Check, Search,
   AlertCircle, Users, Navigation, CreditCard, Smartphone, Banknote,
   Minus, Plus, User, Mail, Phone, ChevronLeft, SlidersHorizontal,
-  Armchair, RectangleHorizontal, Info, Briefcase, Zap
+  Armchair, RectangleHorizontal, Info, Briefcase, Zap, Calendar
 } from "lucide-react";
 import { DashboardShell } from "@/components/layout/DashboardShell";
 import { GlassCard } from "@/components/ui-ext/GlassCard";

@@ -9,5 +9,9 @@ export function generateStaticParams() {
 }
 
 export default function Page({ params }: { params: Promise<{ eventId: string }> }) {
-  return <BookStallClient params={params} />;
+  return (
+    <React.Suspense fallback={null}>
+      <BookStallClient params={params} />
+    </React.Suspense>
+  );
 }

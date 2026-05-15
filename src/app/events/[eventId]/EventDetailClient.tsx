@@ -111,7 +111,7 @@ export default function EventDetailClient({ params }: { params: Promise<{ eventI
                        </div>
                        <p className="text-[11px] font-bold text-muted-foreground leading-relaxed">VIP access, executive lounges, and priority seating for high-level summits.</p>
                        <Link href={`/onboarding?role=delegate&event=${event.id}`} className="block mt-4">
-                          <GradientButton className="w-full h-10 text-[10px] font-black uppercase tracking-widest" variant="emerald">Book Now</GradientButton>
+                          <GradientButton className="w-full h-10 text-[10px] font-black uppercase tracking-widest">Book Now</GradientButton>
                        </Link>
                     </div>
                  </GlassCard>
@@ -125,7 +125,7 @@ export default function EventDetailClient({ params }: { params: Promise<{ eventI
                        </div>
                        <p className="text-[11px] font-bold text-muted-foreground leading-relaxed">Secure premium stall locations, showcase products, and scan high-intent leads.</p>
                        <Link href={`/onboarding?role=exhibitor&event=${event.id}`} className="block mt-4">
-                          <GradientButton className="w-full h-10 text-[10px] font-black uppercase tracking-widest" variant="amber">Book Now</GradientButton>
+                          <GradientButton className="w-full h-10 text-[10px] font-black uppercase tracking-widest">Book Now</GradientButton>
                        </Link>
                     </div>
                  </GlassCard>

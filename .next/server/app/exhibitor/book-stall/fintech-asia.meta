@@ -1,0 +1,7 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "4294967294",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/exhibitor/layout,_N_T_/exhibitor/book-stall/layout,_N_T_/exhibitor/book-stall/[eventId]/layout,_N_T_/exhibitor/book-stall/[eventId]/page,_N_T_/exhibitor/book-stall/fintech-asia/"
+  }
+}

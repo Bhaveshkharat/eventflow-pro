@@ -22,6 +22,7 @@ export type Event = {
     premiumPrice: number;
     regularPrice: number;
     cornerPrice: number;
+    islandPrice?: number;
     inclusions: string[];
   };
   commissionPercent?: number; // Organizer's commission (e.g. 13 for 13%)
