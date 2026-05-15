@@ -195,23 +195,7 @@ export function DashboardShell({ children, title, subtitle, backLink }: { childr
   }, [role]);
 
   // Filter groups if onboarding is locked - Memoized for speed
-  const filteredGroups = useMemo(() => {
-    if (typeof window === "undefined") return currentGroups;
-
-    const visitorBookings = localStorage.getItem("eventflow_pro_user_bookings_v1");
-    const exhibitorBookings = localStorage.getItem("eventflow_pro_exhibitor_requests_v1");
-    
-    const hasAny = (visitorBookings && JSON.parse(visitorBookings).length > 0) || 
-                   (exhibitorBookings && JSON.parse(exhibitorBookings).length > 0) ||
-                   (role === "organizer" || role === "vendor" || role === "superadmin"); 
-
-    if (!hasAny && ["visitor", "exhibitor", "delegate", "speaker"].includes(role)) {
-       // Return only a "Getting Started" or empty list to hide the sidebar logic
-       return [];
-    }
-    
-    return currentGroups;
-  }, [currentGroups, role]);
+  const filteredGroups = currentGroups;
 
   return (
     <div className="flex min-h-screen bg-transparent">
