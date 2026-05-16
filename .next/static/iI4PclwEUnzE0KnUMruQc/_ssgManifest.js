@@ -1,1 +1,0 @@
-self.__SSG_MANIFEST=new Set(["\u002Fbook\u002F[eventId]","\u002Fevents\u002F[eventId]","\u002Fexhibitor\u002Fbook-stall\u002F[eventId]"]);self.__SSG_MANIFEST_CB&&self.__SSG_MANIFEST_CB()

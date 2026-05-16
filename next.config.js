@@ -2,7 +2,6 @@
 const nextConfig = {
   /* config options here */
   output: 'export',
-  distDir: 'out',
   basePath: '/eventflow-pro',
   assetPrefix: '/eventflow-pro',
   trailingSlash: true,
