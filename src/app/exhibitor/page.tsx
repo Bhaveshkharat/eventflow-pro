@@ -8,6 +8,7 @@ import {
   ArrowRight, Layers, Package, Activity, PieChart, ShieldCheck, Hotel
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { DashboardShell } from "@/components/layout/DashboardShell";
 import { GlassCard } from "@/components/ui-ext/GlassCard";
 import { StatCard } from "@/components/ui-ext/StatCard";
@@ -15,6 +16,7 @@ import { GradientButton } from "@/components/ui-ext/GradientButton";
 import { cn } from "@/lib/utils";
 
 export default function ExhibitorDashboard() {
+  const router = useRouter();
   const [isLoaded, setIsLoaded] = useState(false);
   const [showLogisticsPromo, setShowLogisticsPromo] = useState(false);
   const [selectedEventForPromo, setSelectedEventForPromo] = useState<any>(null);
@@ -32,8 +34,8 @@ export default function ExhibitorDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <StatCard icon={Building2} label="Managed Stalls" value={14} delta="+2 this month" />
         <StatCard icon={Users} label="Total Leads Captured" value={1240} delta="+18% growth" />
-        <StatCard icon={DollarSign} label="Overall Investment" value="₹12.4L" prefix="" delta="12 Events" />
-        <StatCard icon={Activity} label="ROI Performance" value="84%" delta="Top 5% of Peers" />
+        <StatCard icon={Calendar} label="Events Enrolled" value={12} delta="+2 this quarter" />
+        <StatCard icon={DollarSign} label="Overall Investment" value="₹12.4L" delta="On track with budget" />
       </div>
 
       <div className="grid lg:grid-cols-12 gap-8">
@@ -133,7 +135,7 @@ export default function ExhibitorDashboard() {
                           onClick={() => {
                              const skip = localStorage.getItem(`eventflow_pro_skip_logistics_promo_${b.id}`);
                              if (skip === "true") {
-                                window.location.href = `/exhibitor/booth/${b.id}`;
+                                router.push(`/exhibitor/booth/${b.id}`);
                              } else {
                                 setSelectedEventForPromo(b);
                                 setShowLogisticsPromo(true);
@@ -182,7 +184,7 @@ export default function ExhibitorDashboard() {
 
                           <div className="mt-12 space-y-4">
                              <button 
-                               onClick={() => window.location.href = "/hotels-travel-catalog"}
+                               onClick={() => router.push("/hotels-travel-catalog")}
                                className="w-full h-16 rounded-2xl bg-primary text-white font-black uppercase tracking-[0.2em] text-[11px] shadow-glow flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-95 transition-all"
                              >
                                 Explore Logistics Hub <ArrowRight className="h-5 w-5" />
@@ -192,7 +194,7 @@ export default function ExhibitorDashboard() {
                                 <button 
                                   onClick={() => {
                                      setShowLogisticsPromo(false);
-                                     window.location.href = `/exhibitor/booth/${selectedEventForPromo.id}`;
+                                     router.push(`/exhibitor/booth/${selectedEventForPromo.id}`);
                                   }}
                                   className="flex-1 h-12 rounded-xl bg-accent/30 text-[10px] font-black uppercase tracking-widest text-foreground hover:bg-accent/50 transition-all"
                                 >
@@ -202,7 +204,7 @@ export default function ExhibitorDashboard() {
                                   onClick={() => {
                                      localStorage.setItem(`eventflow_pro_skip_logistics_promo_${selectedEventForPromo.id}`, "true");
                                      setShowLogisticsPromo(false);
-                                     window.location.href = `/exhibitor/booth/${selectedEventForPromo.id}`;
+                                     router.push(`/exhibitor/booth/${selectedEventForPromo.id}`);
                                   }}
                                   className="flex-1 h-12 rounded-xl border border-border text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-foreground transition-all"
                                 >

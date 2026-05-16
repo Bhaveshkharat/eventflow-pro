@@ -178,6 +178,50 @@ const HotelCard = ({ hotel, onBook }: { hotel: CompanionService, onBook: (h: Com
   );
 };
 
+const BoothActivityFeed = ({ boothId }: { boothId: string }) => {
+  const activities = [
+    { time: "2h ago", text: "Premium Sofas (Set of 2) have been positioned.", status: "completed", vendor: "Royal Decor" },
+    { time: "5h ago", text: "Main electrical line (1500W) successfully grounded.", status: "completed", vendor: "PowerLink" },
+    { time: "1d ago", text: "100Mbps Dedicated Line activated and tested.", status: "completed", vendor: "NetStream" },
+    { time: "1d ago", text: "Booth cleaning scheduled for tomorrow 09:00 AM.", status: "pending", vendor: "SparkleCare" }
+  ];
+
+  return (
+    <GlassCard className="p-6 border-border/40 bg-primary/5 h-fit" hover={false}>
+      <div className="flex items-center justify-between mb-6">
+        <h4 className="text-[10px] font-black uppercase text-primary tracking-[0.2em] flex items-center gap-2">
+           <Activity className="h-3.5 w-3.5" /> Live Booth Feed
+        </h4>
+        <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-glow animate-pulse" />
+      </div>
+
+      <div className="space-y-6">
+        {activities.map((act, i) => (
+          <div key={i} className="flex gap-4 relative">
+             {i !== activities.length - 1 && <div className="absolute left-2.5 top-6 bottom-0 w-[1px] bg-border/40" />}
+             <div className={cn(
+               "h-5 w-5 rounded-full z-10 shrink-0 mt-0.5 flex items-center justify-center",
+               act.status === "completed" ? "bg-emerald-500/20 border border-emerald-500/40" : "bg-primary/10 border border-primary/20"
+             )}>
+                {act.status === "completed" ? <Check className="h-2.5 w-2.5 text-emerald-500" /> : <Clock className="h-2.5 w-2.5 text-primary" />}
+             </div>
+             <div>
+                <div className="flex items-center gap-2">
+                   <p className="text-xs font-bold text-foreground leading-tight">{act.text}</p>
+                </div>
+                <div className="flex items-center gap-2 mt-1.5">
+                   <span className="text-[9px] font-black text-muted-foreground uppercase tracking-tighter">{act.time}</span>
+                   <span className="h-1 w-1 rounded-full bg-border" />
+                   <span className="text-[9px] font-black text-primary/80 uppercase tracking-tighter">{act.vendor}</span>
+                </div>
+             </div>
+          </div>
+        ))}
+      </div>
+    </GlassCard>
+  );
+};
+
 const TravelCard = ({ travel, onBook }: { travel: CompanionService, onBook: (t: CompanionService) => void }) => {
   return (
     <GlassCard className="p-0 overflow-hidden border-border/40 hover:border-primary/40 transition-all group mb-4" hover={false}>
@@ -228,7 +272,7 @@ const TravelCard = ({ travel, onBook }: { travel: CompanionService, onBook: (t: 
 };
 
 const BookingModal = ({ item, onClose, commission, eventId }: { item: CompanionService, onClose: () => void, commission: number, eventId: string }) => {
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(0);
   const [config, setConfig] = useState({ rooms: 1, guests: 1, passengers: 1, class: "Economy" });
   const [personDetails, setPersonDetails] = useState<{name: string, age: string, gender: string}[]>([]);
   const [userInfo, setUserInfo] = useState({ email: "", phone: "" });
@@ -284,12 +328,80 @@ const BookingModal = ({ item, onClose, commission, eventId }: { item: CompanionS
             <div>
                <h2 className="text-sm font-black uppercase tracking-widest">Booking {item.name}</h2>
                <div className="flex gap-1 mt-2">
-                  {[1, 2, 3, 4].map(s => <div key={s} className={cn("h-1 w-12 rounded-full transition-all", s <= step ? "bg-primary shadow-glow-sm" : "bg-border")} />)}
+                  {[0, 1, 2, 3, 4].map(s => <div key={s} className={cn("h-1 w-10 rounded-full transition-all", s <= step ? "bg-primary shadow-glow-sm" : "bg-border")} />)}
                </div>
             </div>
             <button onClick={onClose} className="h-8 w-8 rounded-full hover:bg-accent flex items-center justify-center"><X className="h-4 w-4" /></button>
          </div>
          <div className="p-8 overflow-y-auto no-scrollbar">
+            {step === 0 && (
+               <div className="space-y-6">
+                  <div className="aspect-video w-full rounded-3xl overflow-hidden relative border border-border">
+                     <img src={item.image} className="h-full w-full object-cover" alt="" />
+                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                     <div className="absolute bottom-6 left-6 right-6 flex items-end justify-between">
+                        <div>
+                           <h3 className="text-2xl font-black text-white tracking-tight">{item.name}</h3>
+                           <div className="flex items-center gap-2 mt-2">
+                              <div className="flex items-center bg-emerald-500 text-white px-2 py-0.5 rounded text-[10px] font-black">
+                                 {item.rating} <Star className="h-3 w-3 fill-white ml-1" />
+                              </div>
+                              <span className="text-[10px] font-bold text-white/80 uppercase tracking-widest flex items-center gap-1.5">
+                                 <MapPin className="h-3 w-3" /> {item.distance} from Venue
+                              </span>
+                           </div>
+                        </div>
+                        <div className="text-right">
+                           <p className="text-[10px] font-black text-white/60 uppercase">Starting From</p>
+                           <p className="text-2xl font-black text-white">{item.price}</p>
+                        </div>
+                     </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                     <div className="space-y-4">
+                        <h4 className="text-[10px] font-black uppercase text-primary tracking-[0.2em]">Service Description</h4>
+                        <p className="text-xs text-muted-foreground leading-relaxed">
+                           {item.category === "Hotel" 
+                             ? `${item.name} offers premium accommodation with world-class facilities. Perfectly situated ${item.distance} from the event venue, it provides seamless transit for exhibitors.` 
+                             : `Premium ${item.transitType} service ensuring high-speed transit on the ${item.route} route. Managed by our authorized logistics partner.`}
+                        </p>
+                        <div className="flex flex-wrap gap-2 pt-2">
+                           {item.category === "Hotel" ? (
+                              item.amenities?.map(a => (
+                                 <span key={a} className="px-3 py-1 rounded-full bg-accent/40 border border-border text-[10px] font-bold">{a}</span>
+                              ))
+                           ) : (
+                              <>
+                                 <span className="px-3 py-1 rounded-full bg-accent/40 border border-border text-[10px] font-bold">Priority Boarding</span>
+                                 <span className="px-3 py-1 rounded-full bg-accent/40 border border-border text-[10px] font-bold">Extra Luggage</span>
+                                 <span className="px-3 py-1 rounded-full bg-accent/40 border border-border text-[10px] font-bold">Insurance Incl.</span>
+                              </>
+                           )}
+                        </div>
+                     </div>
+                     <div className="space-y-4">
+                        <h4 className="text-[10px] font-black uppercase text-primary tracking-[0.2em]">Key Highlights</h4>
+                        <div className="space-y-3">
+                           {[
+                             { icon: ShieldCheck, label: "Organizer Verified", desc: "Vetted by EventFlow" },
+                             { icon: CreditCard, label: "Secure Payment", desc: "Escrow protection" },
+                             { icon: Zap, label: "Fast Handoff", desc: "Priority support" }
+                           ].map((h, i) => (
+                             <div key={i} className="flex items-center gap-3 p-3 rounded-2xl bg-accent/20 border border-border/40">
+                                <h.icon className="h-4 w-4 text-primary" />
+                                <div>
+                                   <p className="text-[10px] font-black text-foreground uppercase">{h.label}</p>
+                                   <p className="text-[9px] text-muted-foreground">{h.desc}</p>
+                                </div>
+                             </div>
+                           ))}
+                        </div>
+                     </div>
+                  </div>
+               </div>
+            )}
+
             {step === 1 && (
                <div className="space-y-8">
                   <div className="flex items-center gap-3">
@@ -625,6 +737,7 @@ const ServicesTab = ({ eventId, booths }: { eventId: string, booths: any[] }) =>
   const [vendorServices, setVendorServices] = useState<VendorServiceOffer[]>([]);
   const [cart, setCart] = useState<{ serviceId: string; quantity: number; days: number }[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isFeedOpen, setIsFeedOpen] = useState(false);
   const [customReq, setCustomReq] = useState("");
   const [customQty, setCustomQty] = useState(1);
   const [customDays, setCustomDays] = useState(1);
@@ -756,6 +869,14 @@ const ServicesTab = ({ eventId, booths }: { eventId: string, booths: any[] }) =>
 
         <div className="flex items-center gap-3">
            <button 
+             onClick={() => setIsFeedOpen(true)}
+             className="h-11 px-5 rounded-xl glass border border-primary/20 text-primary flex items-center gap-2 hover:bg-primary/5 transition-all group"
+           >
+              <Activity className="h-4 w-4" />
+              <span className="text-xs font-black uppercase tracking-widest">Live Booth Progress</span>
+           </button>
+
+           <button 
              onClick={() => setIsCartOpen(true)}
              className="relative h-11 px-5 rounded-xl bg-primary text-white flex items-center gap-2 hover:opacity-90 transition-all shadow-glow group"
            >
@@ -763,74 +884,97 @@ const ServicesTab = ({ eventId, booths }: { eventId: string, booths: any[] }) =>
               <span className="text-xs font-black uppercase tracking-widest">Cart Summary</span>
               {cart.length > 0 && (
                 <span className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-white text-primary text-[10px] font-black flex items-center justify-center border-2 border-primary animate-in zoom-in">
-                  {cart.length}
+                   {cart.length}
                 </span>
               )}
            </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {vendorServices.map(service => {
-          const finalPrice = calculateCommissionedPrice(service.basePrice, commission);
-          const cartItem = cart.find(item => item.serviceId === service.id);
-          
-          return (
-            <ServiceCard 
-              key={service.id} 
-              service={service} 
-              price={finalPrice} 
-              onAdd={(q, d) => addToCart(service.id, q, d)}
-              inCartCount={cartItem?.quantity}
-            />
-          );
-        })}
+      <div className="space-y-8">
+         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {vendorServices.map(service => {
+              const finalPrice = calculateCommissionedPrice(service.basePrice, commission);
+              const cartItem = cart.find(item => item.serviceId === service.id);
+              
+              return (
+                <ServiceCard 
+                  key={service.id} 
+                  service={service} 
+                  price={finalPrice} 
+                  onAdd={(q, d) => addToCart(service.id, q, d)}
+                  inCartCount={cartItem?.quantity}
+                />
+              );
+            })}
+         </div>
+
+         <GlassCard className="p-8 border-border/40 bg-primary/[0.02]" hover={false}>
+            <h4 className="text-sm font-black text-foreground mb-4 flex items-center gap-2">
+               <Sparkles className="h-4 w-4 text-primary" /> Customize / Unlisted Service Request
+            </h4>
+            <form onSubmit={submitCustomReq} className="flex flex-col lg:flex-row gap-4 items-end">
+               <div className="flex-[3] w-full">
+                  <label className="text-[9px] font-black uppercase text-muted-foreground mb-2 block tracking-widest">Detailed Requirement</label>
+                  <input 
+                    type="text" 
+                    value={customReq}
+                    onChange={(e) => setCustomReq(e.target.value)}
+                    placeholder="E.g. Extra deep cleaning, custom lighting rig, etc."
+                    className="w-full bg-background border border-border rounded-xl px-4 py-3.5 text-xs font-bold outline-none focus:border-primary transition-all shadow-inner"
+                  />
+               </div>
+               
+               <div className="w-full lg:w-40">
+                  <label className="text-[9px] font-black uppercase text-muted-foreground mb-2 block tracking-widest">Quantity</label>
+                  <div className="flex items-center gap-2 bg-background border border-border rounded-xl p-1">
+                     <button type="button" onClick={() => setCustomQty(Math.max(1, customQty - 1))} className="h-8 w-8 rounded-lg hover:bg-accent flex items-center justify-center transition-colors"><Minus className="h-3 w-3" /></button>
+                     <span className="flex-1 text-center text-xs font-bold">{customQty}</span>
+                     <button type="button" onClick={() => setCustomQty(customQty + 1)} className="h-8 w-8 rounded-lg hover:bg-accent flex items-center justify-center transition-colors"><Plus className="h-3 w-3" /></button>
+                  </div>
+               </div>
+
+               <div className="w-full lg:w-40">
+                  <label className="text-[9px] font-black uppercase text-muted-foreground mb-2 block tracking-widest">Duration (Days)</label>
+                  <div className="flex items-center gap-2 bg-background border border-border rounded-xl p-1">
+                     <button type="button" onClick={() => setCustomDays(Math.max(1, customDays - 1))} className="h-8 w-8 rounded-lg hover:bg-accent flex items-center justify-center transition-colors"><Minus className="h-3 w-3" /></button>
+                     <span className="flex-1 text-center text-xs font-bold">{customDays}</span>
+                     <button type="button" onClick={() => setCustomDays(customDays + 1)} className="h-8 w-8 rounded-lg hover:bg-accent flex items-center justify-center transition-colors"><Plus className="h-3 w-3" /></button>
+                  </div>
+               </div>
+
+               <div className="w-full lg:w-fit">
+                  <GradientButton type="submit" className="w-full px-8 h-11 text-xs font-black uppercase tracking-widest shrink-0 shadow-glow">
+                     Request Service
+                  </GradientButton>
+               </div>
+            </form>
+            <p className="text-[10px] text-muted-foreground mt-4 font-medium flex items-center gap-2">
+               <InfoIcon className="h-3 w-3 text-primary" /> Note: Custom requests are sent to the organizer for manual vendor assignment and quoting.
+            </p>
+         </GlassCard>
       </div>
 
-      <GlassCard className="p-8 border-border/40 bg-primary/[0.02]" hover={false}>
-         <h4 className="text-sm font-black text-foreground mb-4 flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-primary" /> Customize / Unlisted Service Request
-         </h4>
-         <form onSubmit={submitCustomReq} className="flex flex-col lg:flex-row gap-4 items-end">
-            <div className="flex-[3] w-full">
-               <label className="text-[9px] font-black uppercase text-muted-foreground mb-2 block tracking-widest">Detailed Requirement</label>
-               <input 
-                 type="text" 
-                 value={customReq}
-                 onChange={(e) => setCustomReq(e.target.value)}
-                 placeholder="E.g. Extra deep cleaning, custom lighting rig, etc."
-                 className="w-full bg-background border border-border rounded-xl px-4 py-3.5 text-xs font-bold outline-none focus:border-primary transition-all shadow-inner"
-               />
-            </div>
-            
-            <div className="w-full lg:w-40">
-               <label className="text-[9px] font-black uppercase text-muted-foreground mb-2 block tracking-widest">Quantity</label>
-               <div className="flex items-center gap-2 bg-background border border-border rounded-xl p-1">
-                  <button type="button" onClick={() => setCustomQty(Math.max(1, customQty - 1))} className="h-8 w-8 rounded-lg hover:bg-accent flex items-center justify-center transition-colors"><Minus className="h-3 w-3" /></button>
-                  <span className="flex-1 text-center text-xs font-bold">{customQty}</span>
-                  <button type="button" onClick={() => setCustomQty(customQty + 1)} className="h-8 w-8 rounded-lg hover:bg-accent flex items-center justify-center transition-colors"><Plus className="h-3 w-3" /></button>
-               </div>
-            </div>
-
-            <div className="w-full lg:w-40">
-               <label className="text-[9px] font-black uppercase text-muted-foreground mb-2 block tracking-widest">Duration (Days)</label>
-               <div className="flex items-center gap-2 bg-background border border-border rounded-xl p-1">
-                  <button type="button" onClick={() => setCustomDays(Math.max(1, customDays - 1))} className="h-8 w-8 rounded-lg hover:bg-accent flex items-center justify-center transition-colors"><Minus className="h-3 w-3" /></button>
-                  <span className="flex-1 text-center text-xs font-bold">{customDays}</span>
-                  <button type="button" onClick={() => setCustomDays(customDays + 1)} className="h-8 w-8 rounded-lg hover:bg-accent flex items-center justify-center transition-colors"><Plus className="h-3 w-3" /></button>
-               </div>
-            </div>
-
-            <div className="w-full lg:w-fit">
-               <GradientButton type="submit" className="w-full px-8 h-11 text-xs font-black uppercase tracking-widest shrink-0 shadow-glow">
-                  Request Service
-               </GradientButton>
-            </div>
-         </form>
-         <p className="text-[10px] text-muted-foreground mt-4 font-medium flex items-center gap-2">
-            <InfoIcon className="h-3 w-3 text-primary" /> Note: Custom requests are sent to the organizer for manual vendor assignment and quoting.
-         </p>
-      </GlassCard>
+      <AnimatePresence>
+        {isFeedOpen && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsFeedOpen(false)} className="absolute inset-0 bg-neutral-950/60 backdrop-blur-sm" />
+             <motion.div 
+               initial={{ opacity: 0, scale: 0.95, y: 20 }} 
+               animate={{ opacity: 1, scale: 1, y: 0 }} 
+               exit={{ opacity: 0, scale: 0.95, y: 20 }}
+               className="relative w-full max-w-lg"
+             >
+                <div className="absolute top-4 right-4 z-20">
+                   <button onClick={() => setIsFeedOpen(false)} className="h-8 w-8 rounded-full bg-background/20 backdrop-blur-md border border-white/10 flex items-center justify-center hover:bg-background/40 transition-all">
+                      <X className="h-4 w-4" />
+                   </button>
+                </div>
+                <BoothActivityFeed boothId={selectedBoothId} />
+             </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Cart Modal */}
       {isCartOpen && (

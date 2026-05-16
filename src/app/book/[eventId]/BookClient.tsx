@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, use } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   ArrowLeft, ArrowRight, Check, CreditCard, Lock, 
@@ -14,8 +15,12 @@ import { events, tickets } from "@/data/mock";
 import { toast } from "sonner";
 import { notFound } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { useRole } from "@/hooks/useRole";
 
 export default function BookClient({ params }: { params: Promise<{ eventId: string }> }) {
+  const { setRole } = useRole();
+  const searchParams = useSearchParams();
+  const isDelegate = searchParams.get("tier") === "delegate";
   const { eventId } = use(params);
   const event = events.find(e => e.id === eventId);
   
@@ -177,7 +182,7 @@ export default function BookClient({ params }: { params: Promise<{ eventId: stri
                   </div>
                   <div className="mt-6 flex justify-center gap-3">
                     <button onClick={() => toast.success("Ticket downloaded")} className="px-4 py-2 rounded-full glass text-sm flex items-center gap-1.5"><Download className="h-4 w-4" />Download</button>
-                    <Link href="/visitor"><GradientButton>Open dashboard <ArrowRight className="h-4 w-4" /></GradientButton></Link>
+                    <Link href={isDelegate ? "/delegate" : "/visitor"}><GradientButton>Open dashboard <ArrowRight className="h-4 w-4" /></GradientButton></Link>
                   </div>
                 </div>
               )}
@@ -195,6 +200,9 @@ export default function BookClient({ params }: { params: Promise<{ eventId: stri
                        const raw = localStorage.getItem("eventflow_pro_user_bookings_v1");
                        const current = raw ? JSON.parse(raw) : [];
                        
+                       const delegateInfoRaw = localStorage.getItem("eventflow_pro_delegate_info");
+                       const delegateInfo = delegateInfoRaw ? JSON.parse(delegateInfoRaw) : null;
+
                        const newTicket = {
                           id: `tk-${Date.now()}`,
                           eventId: event.id,
@@ -205,10 +213,19 @@ export default function BookClient({ params }: { params: Promise<{ eventId: stri
                           qrCode: `EF-${event.id.slice(0,3).toUpperCase()}-${Math.random().toString(36).substring(7).toUpperCase()}`,
                           venueDistance: "1.2 km",
                           inclusions: selected.perks,
-                          timestamp: new Date().toISOString()
+                          timestamp: new Date().toISOString(),
+                          role: isDelegate ? "delegate" : "visitor",
+                          companyInfo: isDelegate ? delegateInfo : null
                        };
 
                        localStorage.setItem("eventflow_pro_user_bookings_v1", JSON.stringify([newTicket, ...current]));
+                        
+                       if (isDelegate) {
+                          setRole("delegate");
+                       } else {
+                          setRole("visitor");
+                       }
+
                        toast.success("Payment processed successfully!");
                     }
                     setStep(s => s + 1); 

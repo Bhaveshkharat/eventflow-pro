@@ -15,7 +15,7 @@ import { GradientButton } from "@/components/ui-ext/GradientButton";
 import { events } from "@/data/mock";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 
 interface Stall {
   id: string;
@@ -27,6 +27,7 @@ interface Stall {
 export default function BookStallClient({ params }: { params: Promise<{ eventId: string }> }) {
   const { eventId } = React.use(params);
   const searchParams = useSearchParams();
+  const router = useRouter();
   const skipAuth = searchParams.get("skipAuth") === "true";
   const event = events.find(e => e.id === eventId);
   
@@ -97,7 +98,7 @@ export default function BookStallClient({ params }: { params: Promise<{ eventId:
      localStorage.setItem("eventflow_pro_exhibitor_requests_v1", JSON.stringify([...newBookings, ...current]));
 
      toast.success("Stall(s) successfully reserved! Redirecting to your dashboard...");
-     setTimeout(() => window.location.href = "/exhibitor", 1500);
+     setTimeout(() => router.push("/exhibitor"), 1500);
   };
 
   return (
@@ -380,7 +381,7 @@ export default function BookStallClient({ params }: { params: Promise<{ eventId:
                     </p>
                     
                     <GradientButton 
-                      onClick={() => window.location.href = "/exhibitor/booth"}
+                      onClick={() => router.push("/exhibitor/booth")}
                       className="w-full h-14 text-sm font-black uppercase tracking-widest shadow-glow"
                     >
                        Add Services <ArrowRight className="ml-2 h-4 w-4" />

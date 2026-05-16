@@ -8,6 +8,12 @@ export function generateStaticParams() {
   }));
 }
 
+import { Suspense } from "react";
+
 export default function Page({ params }: { params: Promise<{ eventId: string }> }) {
-  return <BookClient params={params} />;
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+      <BookClient params={params} />
+    </Suspense>
+  );
 }

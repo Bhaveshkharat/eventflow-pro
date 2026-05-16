@@ -1,6 +1,7 @@
 "use client";
 import React from "react";
-import { ShieldCheck, Users, Globe, PieChart, LayoutDashboard, Settings, MoreVertical, Search, Filter, ArrowUpRight } from "lucide-react";
+import Link from "next/link";
+import { ShieldCheck, Users, Globe, PieChart, LayoutDashboard, Settings, MoreVertical, Search, Filter, ArrowUpRight, Briefcase } from "lucide-react";
 import { DashboardShell } from "@/components/layout/DashboardShell";
 import { GlassCard } from "@/components/ui-ext/GlassCard";
 import { GradientButton } from "@/components/ui-ext/GradientButton";
@@ -85,6 +86,19 @@ export default function SuperAdminDashboard() {
               </div>
               <GradientButton className="w-full h-10">Global System Config <Settings className="ml-2 h-3.5 w-3.5" /></GradientButton>
            </div>
+
+           <GlassCard className="p-6 bg-primary/5 border-primary/20 mb-6" hover={false}>
+              <div className="flex items-center justify-between mb-2">
+                 <h3 className="text-xs font-bold uppercase tracking-widest text-primary">Global Partners</h3>
+                 <Briefcase className="h-3.5 w-3.5 text-primary" />
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-2">Manage global network of Hotels, Travel Partners, and Vendors.</p>
+              <Link href="/super-admin/partners">
+                 <button className="w-full mt-4 py-2 rounded-xl bg-primary/10 border border-primary/20 text-primary text-[10px] font-black uppercase tracking-widest hover:bg-primary hover:text-white transition-all">
+                    Manage Service Partners
+                 </button>
+              </Link>
+           </GlassCard>
 
            <GlassCard className="p-6 bg-primary/5 border-primary/20" hover={false}>
               <div className="flex items-center justify-between mb-2">

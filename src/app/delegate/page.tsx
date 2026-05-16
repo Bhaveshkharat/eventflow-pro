@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   ShieldCheck, Calendar, Clock, MapPin, 
@@ -9,15 +9,26 @@ import {
   QrCode, UserPlus, Sparkles, X, Check, Award,
   Send, ExternalLink
 } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { DashboardShell } from "@/components/layout/DashboardShell";
 import { GlassCard } from "@/components/ui-ext/GlassCard";
 import { GradientButton } from "@/components/ui-ext/GradientButton";
 import { events } from "@/data/mock";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useRole } from "@/hooks/useRole";
 
 export default function DelegateDashboard() {
+  const router = useRouter();
+  const { role, setRole } = useRole();
   const currentEvent = events[0]; // Active bound target event: TechSummit 2026
+
+  useEffect(() => {
+    if (role !== "delegate") {
+      setRole("delegate");
+    }
+  }, [role, setRole]);
 
   // ── SESSIONS TRACK STATE ──
   const [sessions, setSessions] = useState([
@@ -103,6 +114,30 @@ export default function DelegateDashboard() {
   // Sovereign badge wallet inspection modal toggle
   const [showBadgeWallet, setShowBadgeWallet] = useState(false);
 
+  // ── DELEGATE BOOKING & LOGISTICS STATE ──
+  const [hasPremiumPass, setHasPremiumPass] = useState(false);
+  const [showLogisticsPromo, setShowLogisticsPromo] = useState(false);
+  const [promoEvent, setPromoEvent] = useState<any>(null);
+
+  useEffect(() => {
+    const raw = localStorage.getItem("eventflow_pro_user_bookings_v1");
+    if (raw) {
+       const tickets = JSON.parse(raw);
+       const delegateTicket = tickets.find((t: any) => t.role === "delegate" && t.eventId === currentEvent.id);
+       
+       if (delegateTicket) {
+          setHasPremiumPass(true);
+          
+          // Show promo for the most recent booking if not skipped
+          const skip = localStorage.getItem(`eventflow_pro_delegate_skip_promo_${currentEvent.id}`);
+          if (skip !== "true") {
+             setPromoEvent(currentEvent);
+             setShowLogisticsPromo(true);
+          }
+       }
+    }
+  }, [currentEvent.id]);
+
   return (
     <DashboardShell 
       title="Delegate Access Command" 
@@ -120,6 +155,11 @@ export default function DelegateDashboard() {
                   <span className="px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-primary text-white font-mono shadow-sm">
                     PRO ACCESS DELEGATE
                   </span>
+                  {hasPremiumPass && (
+                    <span className="px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-500 text-white font-mono shadow-glow-sm flex items-center gap-1.5">
+                      <Award className="h-3 w-3" /> PREMIUM PASS
+                    </span>
+                  )}
                   <span className="text-[11px] font-bold text-muted-foreground uppercase font-mono tracking-wider">
                     ID: #{currentEvent.id.toUpperCase()}-D-1029
                   </span>
@@ -656,12 +696,12 @@ export default function DelegateDashboard() {
 
               <div className="w-full mt-4 pt-3 border-t border-border/40 text-left space-y-1 text-xs text-muted-foreground">
                 <div className="flex justify-between font-mono">
-                  <span>Host Bounds:</span>
-                  <span className="font-bold text-foreground">{currentEvent.title}</span>
+                   <span>Host Bounds:</span>
+                   <span className="font-bold text-foreground">{currentEvent.title}</span>
                 </div>
                 <div className="flex justify-between font-mono">
-                  <span>Track Authorization:</span>
-                  <span className="font-bold text-foreground">VIP Pro Access Control</span>
+                   <span>Track Authorization:</span>
+                   <span className="font-bold text-foreground">VIP Pro Access Control</span>
                 </div>
               </div>
 
@@ -671,6 +711,69 @@ export default function DelegateDashboard() {
               >
                 Dismiss Key Wallet
               </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* PREMIUM LOGISTICS PROMOTION MODAL */}
+      <AnimatePresence>
+        {showLogisticsPromo && promoEvent && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setShowLogisticsPromo(false)}
+              className="absolute inset-0 bg-background/80 backdrop-blur-md"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="w-full max-w-lg relative z-10"
+            >
+              <GlassCard className="p-10 border-primary/30 shadow-2xl relative overflow-hidden" hover={false}>
+                <div className="absolute -top-24 -right-24 w-48 h-48 bg-primary/20 rounded-full blur-3xl" />
+                <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-amber-500/20 rounded-full blur-3xl" />
+                
+                <div className="text-center relative z-10">
+                  <div className="h-20 w-20 bg-gradient-to-br from-amber-500 to-primary rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-glow rotate-3 ring-4 ring-amber-500/20">
+                    <CheckCircle2 className="h-10 w-10 text-white" />
+                  </div>
+                  <h2 className="text-3xl font-black tracking-tight text-foreground">Premium Logistics</h2>
+                  <p className="text-sm text-muted-foreground mt-4 leading-relaxed font-medium">
+                    As a <span className="text-primary font-black uppercase">Corporate Delegate</span> for <span className="text-foreground font-black">{promoEvent.title}</span>, 
+                    you have priority access to executive hotel blocks and luxury shuttle services.
+                  </p>
+
+                  <div className="mt-12 space-y-4">
+                    <Link 
+                      href={`/hotels-travel-catalog?event=${promoEvent.id}&tier=premium`}
+                      onClick={() => setShowLogisticsPromo(false)}
+                      className="w-full h-16 rounded-2xl bg-primary text-white font-black uppercase tracking-[0.2em] text-[11px] shadow-glow flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-95 transition-all"
+                    >
+                      Explore Premium Facilities <ChevronRight className="h-5 w-5" />
+                    </Link>
+                    
+                    <div className="flex gap-3">
+                      <button 
+                        onClick={() => setShowLogisticsPromo(false)}
+                        className="flex-1 h-12 rounded-xl bg-accent/30 text-[10px] font-black uppercase tracking-widest text-foreground hover:bg-accent/50 transition-all"
+                      >
+                        Maybe Later
+                      </button>
+                      <button 
+                        onClick={() => {
+                          localStorage.setItem(`eventflow_pro_delegate_skip_promo_${promoEvent.id}`, "true");
+                          setShowLogisticsPromo(false);
+                        }}
+                        className="flex-1 h-12 rounded-xl border border-border text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-foreground transition-all"
+                      >
+                        Don't show again
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </GlassCard>
             </motion.div>
           </div>
         )}

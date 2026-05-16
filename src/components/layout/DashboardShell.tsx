@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Ticket, Users, Building2, Hotel, BarChart3, 
   ScanLine, Bell, Settings, Sparkles, Menu, X, Search, 
   Mic2, Briefcase, ShieldCheck, Truck, Plane, Calendar, DollarSign, FileText,
-  ChevronLeft, ChevronRight, LogOut, HelpCircle, User, Layers, PackageCheck
+  ChevronLeft, ChevronRight, LogOut, HelpCircle, User, Layers, PackageCheck, ChevronDown
 } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { ThemeToggle } from "./ThemeToggle";
@@ -18,6 +18,7 @@ interface NavItem {
   label: string;
   icon: any;
   badge?: string;
+  subItems?: NavItem[];
 }
 
 interface NavGroup {
@@ -92,7 +93,24 @@ const roleNavGroups: Record<Role, NavGroup[]> = {
       ]
     }
   ],
-  delegate: [{ group: "Main", items: [{ to: "/delegate", label: "Passes", icon: ShieldCheck }, { to: "/hotels-travel-catalog", label: "Hotels & Travel", icon: Hotel }] }],
+  delegate: [
+    {
+      group: "Discovery",
+      items: [
+        { to: "/events", label: "Upcoming Events", icon: Calendar, badge: "New" },
+      ]
+    },
+    {
+      group: "My Account",
+      items: [
+        { to: "/delegate", label: "My Passes", icon: ShieldCheck },
+        { to: "/visitor", label: "My Bookings", icon: Ticket },
+        { to: "/hotels-travel-catalog", label: "Hotels & Travel", icon: Hotel, badge: "New" },
+        { to: "/notifications", label: "Updates", icon: Bell, badge: "3" },
+        { to: "/settings", label: "Profile Settings", icon: Settings },
+      ]
+    }
+  ],
   speaker: [
     { 
       group: "Operations", 
@@ -122,9 +140,24 @@ const roleNavGroups: Record<Role, NavGroup[]> = {
     { 
       group: "Admin", 
       items: [
-        { to: "/super-admin", label: "Platform", icon: ShieldCheck },
-        { to: "/super-admin/organizers", label: "Organizers", icon: Users }
+        { to: "/super-admin", label: "Platform Control", icon: ShieldCheck },
       ] 
+    },
+    {
+      group: "Master",
+      items: [
+        { to: "/super-admin/organizers", label: "Organizer Master", icon: Users },
+        { 
+          to: "/super-admin/partners", 
+          label: "Partner Master", 
+          icon: Briefcase,
+          subItems: [
+            { to: "/super-admin/partners?category=Vendor", label: "Vendor", icon: Truck },
+            { to: "/super-admin/partners?category=Hotel", label: "Hotel", icon: Hotel },
+            { to: "/super-admin/partners?category=Travel", label: "Travel", icon: Plane },
+          ]
+        }
+      ]
     }
   ]
 };
@@ -135,6 +168,26 @@ export function DashboardShell({ children, title, subtitle, backLink }: { childr
   const [isMobile, setIsMobile] = useState(false);
   const { role, setRole } = useRole();
   const router = useRouter();
+  const [expandedItems, setExpandedItems] = useState<string[]>([]);
+
+  // Auto-expand if current path is a sub-item
+  useEffect(() => {
+    filteredGroups.forEach(group => {
+      group.items.forEach(item => {
+        if (item.subItems?.some(sub => path === sub.to || (path.includes('/super-admin/partners') && sub.to.includes(new URLSearchParams(window.location.search).get('category') || '')))) {
+          if (!expandedItems.includes(item.to)) {
+            setExpandedItems(prev => [...prev, item.to]);
+          }
+        }
+      });
+    });
+  }, [path, role]); // Only role and path change should trigger this
+
+  const toggleExpanded = (to: string) => {
+    setExpandedItems(prev => 
+      prev.includes(to) ? prev.filter(i => i !== to) : [...prev, to]
+    );
+  };
 
   const handleRoleSwitch = (newRole: Role) => {
     setRole(newRole);
@@ -255,28 +308,95 @@ export function DashboardShell({ children, title, subtitle, backLink }: { childr
                   </h3>
                 )}
                 {group.items.map(item => {
-                  const active = path === item.to;
+                  const hasSubItems = item.subItems && item.subItems.length > 0;
+                  const isExpanded = expandedItems.includes(item.to);
+                  const active = path === item.to || (hasSubItems && item.subItems?.some(s => path === s.to));
+
                   return (
-                    <Link key={item.to} href={item.to} className={cn(
-                      "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all relative",
-                      active ? "text-foreground bg-white/5 shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-white/5"
-                    )}>
-                      {active && (
-                        <motion.div 
-                          layoutId="sidebar-active" 
-                          className="absolute inset-y-2 left-0 w-1 bg-primary rounded-full" 
-                        />
-                      )}
-                      <item.icon className={cn("h-5 w-5 shrink-0 transition-colors", active ? "text-primary" : "group-hover:text-primary/70")} />
-                      {!isCollapsed && (
-                        <div className="flex-1 flex items-center justify-between overflow-hidden">
-                          <span className={cn("font-medium truncate transition-all", active && "font-semibold")}>{item.label}</span>
-                          {item.badge && (
-                            <span className="px-1.5 py-0.5 text-[9px] font-bold rounded-md bg-primary/10 text-primary border border-primary/20">
-                              {item.badge}
-                            </span>
+                    <div key={item.to} className="space-y-1">
+                      {hasSubItems ? (
+                        <button
+                          onClick={() => toggleExpanded(item.to)}
+                          className={cn(
+                            "w-full group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all relative",
+                            active ? "text-foreground bg-white/5" : "text-muted-foreground hover:text-foreground hover:bg-white/5"
                           )}
-                        </div>
+                        >
+                          <item.icon className={cn("h-5 w-5 shrink-0 transition-colors", active ? "text-primary" : "group-hover:text-primary/70")} />
+                          {!isCollapsed && (
+                            <>
+                              <span className={cn("flex-1 text-left font-medium truncate", active && "font-semibold")}>{item.label}</span>
+                              <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-300", isExpanded && "rotate-180")} />
+                            </>
+                          )}
+                        </button>
+                      ) : (
+                        <Link href={item.to} className={cn(
+                          "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all relative",
+                          active ? "text-foreground bg-white/5 shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                        )}>
+                          {active && (
+                            <motion.div 
+                              layoutId="sidebar-active" 
+                              className="absolute inset-y-2 left-0 w-1 bg-primary rounded-full" 
+                            />
+                          )}
+                          <item.icon className={cn("h-5 w-5 shrink-0 transition-colors", active ? "text-primary" : "group-hover:text-primary/70")} />
+                          {!isCollapsed && (
+                            <div className="flex-1 flex items-center justify-between overflow-hidden">
+                              <span className={cn("font-medium truncate transition-all", active && "font-semibold")}>{item.label}</span>
+                              {item.badge && (
+                                <span className="px-1.5 py-0.5 text-[9px] font-bold rounded-md bg-primary/10 text-primary border border-primary/20">
+                                  {item.badge}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </Link>
+                      )}
+
+                      {/* Render SubItems */}
+                      {!isCollapsed && hasSubItems && (
+                        <AnimatePresence>
+                          {isExpanded && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: "auto", opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              className="overflow-hidden pl-10 pr-2 space-y-1"
+                            >
+                              {item.subItems?.map(sub => {
+                                const currentParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
+                                const subParams = new URLSearchParams(sub.to.split('?')[1] || '');
+                                const categoryMatch = subParams.has('category') && currentParams.get('category') === subParams.get('category');
+                                const subActive = path === sub.to || (path === '/super-admin/partners' && categoryMatch);
+                                
+                                return (
+                                  <Link 
+                                    key={sub.to} 
+                                    href={sub.to}
+                                    className={cn(
+                                      "group/sub flex items-center gap-3 py-2 px-3 rounded-lg text-[11px] font-bold transition-all relative overflow-hidden",
+                                      subActive ? "text-primary bg-primary/5" : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                                    )}
+                                  >
+                                    <div className={cn(
+                                      "h-1.5 w-1.5 rounded-full shrink-0 transition-all", 
+                                      subActive ? "bg-primary scale-110" : "bg-muted-foreground/30 group-hover/sub:bg-muted-foreground/60"
+                                    )} />
+                                    <span className="flex-1 truncate">{sub.label}</span>
+                                    {subActive && (
+                                      <motion.div 
+                                        layoutId="sub-active-indicator" 
+                                        className="absolute right-2 h-1 w-1 bg-primary rounded-full shadow-[0_0_8px_rgba(var(--primary),0.5)]" 
+                                      />
+                                    )}
+                                  </Link>
+                                );
+                              })}
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       )}
                       
                       {/* Tooltip for collapsed state */}
@@ -286,7 +406,7 @@ export function DashboardShell({ children, title, subtitle, backLink }: { childr
                           <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1 w-2 h-2 bg-background border-l border-b border-white/10 rotate-45" />
                         </div>
                       )}
-                    </Link>
+                    </div>
                   );
                 })}
               </div>

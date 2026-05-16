@@ -13,28 +13,39 @@ import { Footer } from "@/components/layout/Footer";
 import { GlassCard } from "@/components/ui-ext/GlassCard";
 import { GradientButton } from "@/components/ui-ext/GradientButton";
 import { events } from "@/data/mock";
+import { cn } from "@/lib/utils";
+import { useRole } from "@/hooks/useRole";
 import { toast } from "sonner";
 
 function OnboardingContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { setRole } = useRole();
   const role = searchParams.get("role") || "visitor";
   const eventId = searchParams.get("event") || "techsummit-26";
   const event = events.find(e => e.id === eventId);
 
-  const [step, setStep] = useState(0); // 0: Start/Summary, 1: Google Auth, 2: Mobile, 3: OTP, 4: Finalize
+  const [step, setStep] = useState(0); // 0: Start, 1: Identity (Google + Phone/OTP), 2: Company (Delegate), 3: Finalize
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
+  const [isGoogleLinked, setIsGoogleLinked] = useState(false);
+
+  // Delegate specific state
+  const [companyInfo, setCompanyInfo] = useState({
+    companyName: "",
+    designation: "",
+    companyContact: ""
+  });
 
   const handleGoogleSignIn = () => {
     setIsVerifying(true);
-    // Simulate Google OAuth Delay
     setTimeout(() => {
       setIsVerifying(false);
-      setStep(2);
-      toast.success("Successfully authenticated with Google");
-    }, 1800);
+      setIsGoogleLinked(true);
+      toast.success("Google identity linked");
+    }, 1200);
   };
 
   const handleSendOtp = () => {
@@ -45,9 +56,9 @@ function OnboardingContent() {
     setIsVerifying(true);
     setTimeout(() => {
       setIsVerifying(false);
-      setStep(3);
-      toast.info("Verification code sent to your mobile");
-    }, 1500);
+      setOtpSent(true);
+      toast.info("Verification code sent");
+    }, 1200);
   };
 
   const handleVerifyOtp = () => {
@@ -55,19 +66,40 @@ function OnboardingContent() {
       toast.error("Invalid OTP code");
       return;
     }
+    if (!isGoogleLinked) {
+      toast.error("Please link your Google account first");
+      return;
+    }
     setIsVerifying(true);
     setTimeout(() => {
       setIsVerifying(false);
-      setStep(4);
-      toast.success("Identity verified successfully!");
-    }, 1200);
+      if (role === "delegate") {
+        setStep(2);
+      } else {
+        setStep(3);
+      }
+      toast.success("Identity synchronized!");
+    }, 1000);
+  };
+
+  const handleCompanySubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!companyInfo.companyName || !companyInfo.designation) {
+      toast.error("Please fill all required company fields");
+      return;
+    }
+    setStep(3);
+    toast.success("Profile completed!");
   };
 
   const finalizeOnboarding = () => {
-     // Save onboarding flag (simplified)
      localStorage.setItem("eventflow_pro_user_onboarded", "true");
+     setRole(role as any);
      
-     // Redirect based on role
+     if (role === "delegate") {
+       localStorage.setItem("eventflow_pro_delegate_info", JSON.stringify(companyInfo));
+     }
+     
      if (role === "visitor") router.push(`/book/${eventId}`);
      else if (role === "delegate") router.push(`/book/${eventId}?tier=delegate`);
      else if (role === "exhibitor") router.push(`/exhibitor/book-stall/${eventId}?skipAuth=true`);
@@ -75,10 +107,11 @@ function OnboardingContent() {
   };
 
   const steps = [
-    { title: "Participation Path", icon: Fingerprint },
-    { title: "Secure Gateway", icon: Lock },
-    { title: "Identity Sync", icon: Users },
-    { title: "Verification", icon: ShieldCheck }
+    { title: "Path", icon: Fingerprint },
+    { title: "Gateway", icon: Lock },
+    { title: "Sync", icon: Users },
+    { title: "Verify", icon: ShieldCheck },
+    ...(role === "delegate" ? [{ title: "Company", icon: Building2 }] : [])
   ];
 
   return (
@@ -93,14 +126,25 @@ function OnboardingContent() {
         <div className="w-full max-w-xl relative z-10">
           {/* Progress Bar */}
           <div className="flex justify-between mb-12 px-6">
-             {steps.map((s, i) => (
-                <div key={i} className="flex flex-col items-center gap-2">
-                   <div className={`h-8 w-8 rounded-full flex items-center justify-center transition-all border-2 ${step >= i ? "bg-primary border-primary text-white shadow-glow-sm" : "border-border text-muted-foreground"}`}>
-                      <s.icon className="h-4 w-4" />
-                   </div>
-                   <span className={`text-[9px] font-black uppercase tracking-widest ${step >= i ? "text-foreground" : "text-muted-foreground"}`}>{s.title}</span>
-                </div>
-             ))}
+             {steps.map((s, i) => {
+                const isActive = step === i || (step === 5 && i === 4 && role !== "delegate") || (step === 5 && i === 4 && role === "delegate");
+                const isCompleted = step > i || (step === 5);
+                return (
+                  <div key={i} className="flex flex-col items-center gap-2">
+                     <div className={cn(
+                       "h-8 w-8 rounded-full flex items-center justify-center transition-all border-2",
+                       isCompleted ? "bg-primary border-primary text-white shadow-glow-sm" : 
+                       step === i ? "border-primary text-primary" : "border-border text-muted-foreground"
+                     )}>
+                        <s.icon className="h-4 w-4" />
+                     </div>
+                     <span className={cn(
+                       "text-[9px] font-black uppercase tracking-widest",
+                       (step >= i || step === 5) ? "text-foreground" : "text-muted-foreground"
+                     )}>{s.title}</span>
+                  </div>
+                );
+             })}
           </div>
 
           <AnimatePresence mode="wait">
@@ -138,111 +182,152 @@ function OnboardingContent() {
                 )}
 
                 {step === 1 && (
-                  <div className="text-center">
-                    <h2 className="text-2xl font-black tracking-tight text-foreground">Authorized Access</h2>
-                    <p className="text-xs text-muted-foreground mt-2 font-medium">Verify your identity via Google for automated profile sync.</p>
+                  <div className="space-y-8">
+                    <div className="text-center">
+                      <h2 className="text-2xl font-black tracking-tight text-foreground">Identity Sync</h2>
+                      <p className="text-xs text-muted-foreground mt-2 font-medium">Link your credentials to secure your profile.</p>
+                    </div>
                     
-                    <div className="mt-10">
-                       <button 
-                         disabled={isVerifying}
-                         onClick={handleGoogleSignIn}
-                         className="w-full h-14 rounded-2xl glass border border-border/60 hover:border-primary/40 flex items-center justify-center gap-4 transition-all group relative overflow-hidden"
-                       >
-                          {isVerifying && <div className="absolute inset-x-0 bottom-0 h-1 bg-primary/20"><motion.div initial={{ width: 0 }} animate={{ width: "100%" }} transition={{ duration: 1.5 }} className="h-full bg-primary shadow-glow" /></div>}
-                          <img src="https://www.gstatic.com/images/branding/product/2x/googleg_48dp.png" className="h-6 w-6" alt="Google" />
-                          <span className="text-xs font-black uppercase tracking-widest">Sign in with Google</span>
-                       </button>
-                       <p className="mt-6 text-[10px] text-muted-foreground leading-relaxed">By continuing, you agree to our <span className="text-foreground font-bold underline cursor-pointer">Terms of Service</span> and <span className="text-foreground font-bold underline cursor-pointer">Privacy Policy</span>.</p>
+                    <div className="space-y-6">
+                       {/* GOOGLE SECTION */}
+                       <div className={cn("p-6 rounded-2xl border transition-all", isGoogleLinked ? "border-emerald-500/30 bg-emerald-500/5" : "border-border/40 glass")}>
+                          <div className="flex items-center justify-between">
+                             <div className="flex items-center gap-4">
+                                <img src="https://www.gstatic.com/images/branding/product/2x/googleg_48dp.png" className="h-6 w-6" alt="Google" />
+                                <div>
+                                   <p className="text-[10px] font-black uppercase text-muted-foreground">Account Link</p>
+                                   <p className="text-xs font-bold text-foreground">{isGoogleLinked ? "shreyash.mane@example.com" : "Google Authentication"}</p>
+                                </div>
+                             </div>
+                             {isGoogleLinked ? (
+                                <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                             ) : (
+                                <button onClick={handleGoogleSignIn} disabled={isVerifying} className="px-4 py-2 rounded-xl bg-foreground text-background text-[10px] font-black uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all">Link Now</button>
+                             )}
+                          </div>
+                       </div>
+
+                       {/* PHONE SECTION */}
+                       <div className={cn("p-6 rounded-2xl border transition-all", otpSent ? "border-primary/30 bg-primary/5" : "border-border/40 glass")}>
+                          <div className="flex items-center gap-4">
+                             <div className="h-10 w-10 rounded-xl bg-accent/40 flex items-center justify-center">
+                                <Phone className={cn("h-5 w-5", otpSent ? "text-primary" : "text-muted-foreground")} />
+                             </div>
+                             <div className="flex-1">
+                                <p className="text-[10px] font-black uppercase text-muted-foreground">Mobile Verification</p>
+                                <input 
+                                  type="tel" 
+                                  disabled={otpSent}
+                                  value={phone}
+                                  onChange={(e) => setPhone(e.target.value)}
+                                  placeholder="Enter mobile number"
+                                  className="w-full bg-transparent border-none outline-none text-xs font-bold text-foreground mt-0.5 placeholder:text-muted-foreground/40"
+                                />
+                             </div>
+                             {!otpSent && (
+                                <button onClick={handleSendOtp} disabled={isVerifying || !phone} className="px-4 py-2 rounded-xl border border-border/60 text-[10px] font-black uppercase tracking-widest hover:bg-accent/40 transition-all">Verify</button>
+                             )}
+                          </div>
+
+                          {otpSent && (
+                             <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="mt-6 pt-6 border-t border-border/40">
+                                <div className="flex items-center justify-between gap-4">
+                                   <div className="flex-1">
+                                      <p className="text-[10px] font-black uppercase text-muted-foreground mb-2">Enter 6-Digit OTP</p>
+                                      <div className="flex gap-2">
+                                         <input 
+                                           type="text" 
+                                           maxLength={6}
+                                           value={otp}
+                                           onChange={(e) => setOtp(e.target.value)}
+                                           className="w-full h-12 rounded-xl glass border border-primary/20 text-center text-lg font-black tracking-[0.5em] outline-none focus:border-primary transition-all"
+                                         />
+                                      </div>
+                                   </div>
+                                </div>
+                                <button 
+                                  onClick={handleVerifyOtp}
+                                  className="w-full h-12 rounded-xl bg-primary text-white font-black uppercase tracking-widest text-[10px] shadow-glow mt-4"
+                                >
+                                   Confirm Identity
+                                </button>
+                             </motion.div>
+                          )}
+                       </div>
                     </div>
                   </div>
                 )}
 
                 {step === 2 && (
-                  <div>
-                    <h2 className="text-2xl font-black tracking-tight text-foreground">Identity Sync</h2>
-                    <div className="mt-6 flex items-center gap-4 p-4 rounded-2xl bg-accent/30 border border-border/40">
-                       <div className="h-12 w-12 rounded-xl overflow-hidden border border-white/20">
-                          <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${role}`} alt="Sync" />
-                       </div>
-                       <div>
-                          <p className="text-xs font-black text-foreground uppercase">Shreyash Mane</p>
-                          <p className="text-[10px] font-medium text-muted-foreground">shreyash.mane@example.com</p>
-                       </div>
-                       <div className="ml-auto h-6 w-6 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-500">
-                          <CheckCircle2 className="h-4 w-4" />
-                       </div>
+                  <form onSubmit={handleCompanySubmit}>
+                    <div className="text-center mb-10">
+                      <h2 className="text-2xl font-black tracking-tight text-foreground">Corporate Profile</h2>
+                      <p className="text-xs text-muted-foreground mt-2 font-medium">Verify your organizational credentials for premium access.</p>
                     </div>
 
-                    <div className="mt-8 space-y-4">
-                       <div>
-                          <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Connect Mobile</label>
-                          <div className="mt-2 relative">
-                             <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-primary" />
+                    <div className="space-y-5">
+                       <div className="space-y-2">
+                          <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Company Name</label>
+                          <div className="relative">
+                             <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-primary" />
                              <input 
-                               type="tel"
-                               value={phone}
-                               onChange={(e) => setPhone(e.target.value)}
-                               placeholder="+91 98765-43210" 
+                               required
+                               value={companyInfo.companyName}
+                               onChange={(e) => setCompanyInfo({...companyInfo, companyName: e.target.value})}
                                className="w-full h-14 rounded-2xl glass px-12 text-sm font-bold outline-none border border-border/40 focus:border-primary/40 transition-all"
+                               placeholder="e.g. Global Tech Solutions"
                              />
                           </div>
                        </div>
                        
+                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                             <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Designation</label>
+                             <input 
+                               required
+                               value={companyInfo.designation}
+                               onChange={(e) => setCompanyInfo({...companyInfo, designation: e.target.value})}
+                               className="w-full h-14 rounded-2xl glass px-5 text-sm font-bold outline-none border border-border/40 focus:border-primary/40 transition-all"
+                               placeholder="VP Engineering"
+                             />
+                          </div>
+                          <div className="space-y-2">
+                             <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Company Contact</label>
+                             <input 
+                               value={companyInfo.companyContact}
+                               onChange={(e) => setCompanyInfo({...companyInfo, companyContact: e.target.value})}
+                               className="w-full h-14 rounded-2xl glass px-5 text-sm font-bold outline-none border border-border/40 focus:border-primary/40 transition-all"
+                               placeholder="+1 234-567-890"
+                             />
+                          </div>
+                       </div>
+                    </div>
+
+                    <div className="mt-10">
                        <button 
-                         disabled={isVerifying}
-                         onClick={handleSendOtp}
-                         className="w-full h-14 rounded-2xl bg-foreground text-background font-black uppercase tracking-widest text-[11px] shadow-lg flex items-center justify-center gap-3 active:scale-95 transition-all mt-4"
+                         type="submit"
+                         className="w-full h-14 rounded-2xl bg-primary text-white font-black uppercase tracking-widest text-[11px] shadow-glow flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-95 transition-all"
                        >
-                          {isVerifying ? "Requesting..." : "Send Verification Code"} <ArrowRight className="h-4 w-4" />
+                          Finalize Profile <ArrowRight className="h-4 w-4" />
                        </button>
                     </div>
-                  </div>
+                  </form>
                 )}
 
                 {step === 3 && (
-                  <div className="text-center">
-                    <h2 className="text-2xl font-black tracking-tight text-foreground">Verify Identity</h2>
-                    <p className="text-xs text-muted-foreground mt-2 font-medium">Enter the 6-digit code sent to <span className="text-foreground font-black">{phone}</span></p>
-                    
-                    <div className="mt-10">
-                       <div className="relative">
-                          <input 
-                            type="text"
-                            maxLength={6}
-                            value={otp}
-                            onChange={(e) => setOtp(e.target.value)}
-                            placeholder="······" 
-                            className="w-full h-20 rounded-3xl glass text-center text-4xl font-black tracking-[0.5em] outline-none border border-border/40 focus:border-primary/40 transition-all"
-                          />
-                       </div>
-                       
-                       <button 
-                         disabled={isVerifying}
-                         onClick={handleVerifyOtp}
-                         className="w-full h-14 rounded-2xl bg-emerald-500 text-white font-black uppercase tracking-widest text-[11px] shadow-glow-sm flex items-center justify-center gap-3 active:scale-95 transition-all mt-8"
-                       >
-                          {isVerifying ? "Verifying..." : "Confirm & Proceed"} <CheckCircle2 className="h-4 w-4" />
-                       </button>
-                       <p className="mt-6 text-[10px] text-muted-foreground">Didn't receive code? <span className="text-primary font-bold cursor-pointer hover:underline">Resend Code</span></p>
+                  <div className="text-center py-6">
+                    <div className="h-24 w-24 bg-emerald-500/10 rounded-[3rem] flex items-center justify-center mx-auto mb-8">
+                       <CheckCircle2 className="h-12 w-12 text-emerald-500" />
                     </div>
-                  </div>
-                )}
-
-                {step === 4 && (
-                  <div className="text-center">
-                    <div className="h-20 w-20 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-500 mx-auto mb-8 relative">
-                       <CheckCircle2 className="h-12 w-12" />
-                       <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1.5, opacity: 0 }} transition={{ duration: 1, repeat: Infinity }} className="absolute inset-0 rounded-full border-2 border-emerald-500/20" />
-                    </div>
-                    <h2 className="text-3xl font-black tracking-tight text-foreground">Authentication Clear</h2>
-                    <p className="text-sm text-muted-foreground mt-3 font-medium">Your identity has been secured. You can now proceed to finalize your <span className="text-primary font-black uppercase">{role}</span> slot for {event?.title}.</p>
+                    <h2 className="text-3xl font-black tracking-tight text-foreground">All Set!</h2>
+                    <p className="text-sm text-muted-foreground mt-3 font-medium max-w-[280px] mx-auto">Your identity has been verified and your profile is ready for {event?.title}.</p>
                     
-                    <div className="mt-10">
+                    <div className="mt-12">
                        <button 
                          onClick={finalizeOnboarding}
-                         className="w-full h-16 rounded-[2rem] gradient-bg text-white font-black uppercase tracking-[0.2em] text-xs shadow-glow flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-95 transition-all"
+                         className="w-full h-16 rounded-2xl gradient-bg text-white font-black uppercase tracking-[0.2em] text-xs shadow-glow flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-95 transition-all"
                        >
-                          Proceed to {role === "exhibitor" ? "Booth Selection" : "Checkout"} <ArrowRight className="h-5 w-5" />
+                          Enter Platform <Sparkles className="h-4 w-4" />
                        </button>
                     </div>
                   </div>

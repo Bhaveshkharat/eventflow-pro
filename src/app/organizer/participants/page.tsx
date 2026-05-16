@@ -52,6 +52,39 @@ export default function ParticipantsManagement() {
     { id: "spk-4", eventId: "fintech-asia", name: "Kenji Takahashi", email: "kenji@fintech.jp", role: "Speaker", meta: "Track: Sovereign Ledgers", status: "Confirmed", date: "2026-04-30", avatar: "https://i.pravatar.cc/80?img=13", bio: "Central Bank digital currency advisor researching ultra-fast localized payment chains.", org: "Bank of Tokyo Lab", phone: "+81 3 3311 9901" }
   ]);
 
+  // ── PERSISTENCE INTEGRATION ──
+  React.useEffect(() => {
+    const raw = localStorage.getItem("eventflow_pro_user_bookings_v1");
+    if (raw) {
+       const bookings = JSON.parse(raw);
+       const localDelegates = bookings
+         .filter((b: any) => b.role === "delegate")
+         .map((b: any) => ({
+           id: b.id,
+           eventId: b.eventId,
+           name: b.attendeeName,
+           email: "delegate@corporate.com",
+           role: "Delegate",
+           meta: b.passTier,
+           status: "Confirmed",
+           date: b.timestamp.split('T')[0],
+           avatar: `https://i.pravatar.cc/80?img=${Math.floor(Math.random() * 50) + 1}`,
+           bio: b.companyInfo?.designation ? `Professional Designation: ${b.companyInfo.designation}` : "Corporate Delegate",
+           org: b.companyInfo?.companyName || "Global Entity",
+           phone: b.companyInfo?.companyContact || "+1 (555) 000-0000",
+           companyInfo: b.companyInfo
+         }));
+       
+       if (localDelegates.length > 0) {
+         setDelegatesList(prev => {
+            const existingIds = new Set(prev.map(d => d.id));
+            const uniqueNew = localDelegates.filter((d: any) => !existingIds.has(d.id));
+            return [...uniqueNew, ...prev];
+         });
+       }
+    }
+  }, []);
+
   // Aggregate Counters
   const totalExhibitors = exhibitorsList.length;
   const totalVisitors   = visitorsList.length;
@@ -594,7 +627,25 @@ export default function ParticipantsManagement() {
                        )}
                     </div>
 
-                    <div className="space-y-2">
+                     {selectedParticipant.companyInfo && (
+                        <div className="p-4 rounded-xl bg-amber-500/5 border border-amber-500/20 space-y-3 mt-4">
+                           <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 block">
+                             Corporate Credentials
+                           </span>
+                           <div className="grid grid-cols-2 gap-3 font-mono">
+                              <div>
+                                 <span className="text-[9px] text-muted-foreground block font-sans uppercase">Designation</span>
+                                 <span className="font-bold text-foreground truncate block">{selectedParticipant.companyInfo.designation}</span>
+                              </div>
+                              <div>
+                                 <span className="text-[9px] text-muted-foreground block font-sans uppercase">Company Contact</span>
+                                 <span className="font-bold text-foreground truncate block">{selectedParticipant.companyInfo.companyContact}</span>
+                              </div>
+                           </div>
+                        </div>
+                     )}
+
+                     <div className="space-y-2">
                        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
                          Biography / Bio
                        </span>
